@@ -1,0 +1,126 @@
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: VENOUS_COMPLIANCE-1 Node 9 in NSET RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: R_ATRIUM-1 Node 10783 in NSET CAV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: rootAssembly Node 12 in NSET RV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: PULMONARY_COMPLIANCE-1 Node 9 in NSET RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: L_ATRIUM-1 Node 11692 in NSET CAV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: rootAssembly Node 11 in NSET LV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity pressure: PCAV PI: ARTERIAL_COMPLIANCE-1 Node 9 in NSET RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: VENOUS_COMPLIANCE-1 Node 9 in NSET RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: R_ATRIUM-1 Node 10783 in NSET CAV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: rootAssembly Node 12 in NSET RV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: PULMONARY_COMPLIANCE-1 Node 9 in NSET RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: L_ATRIUM-1 Node 11692 in NSET CAV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: rootAssembly Node 11 in NSET LV-RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
+odb = session.odbs['D:/Users/ETA2/hC10B-valvesfixed/hC10Bvf_R7-2.odb']
+xy1 = xyPlot.XYDataFromHistory(odb=odb, 
+    outputVariableName='Fluid cavity volume: CVOL PI: ARTERIAL_COMPLIANCE-1 Node 9 in NSET RP', 
+    )
+c1 = session.Curve(xyData=xy1)
+xyp = session.xyPlots['XYPlot-1']
+chartName = xyp.charts.keys()[0]
+chart = xyp.charts[chartName]
+chart.setValues(curvesToPlot=(c1, ), )
