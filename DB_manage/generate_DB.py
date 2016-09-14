@@ -42,9 +42,10 @@ def insert_PV(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
     for name,ID in jobs.items():
         try:
             data=read_PV_result(rootf+'/'+resultsf+'/'+name+'_PV.csv')
+            columns=['jID']+list(data.columns)
             c.executemany(\
-                'INSERT INTO jPV VALUES ({0}{1});'.format(ID,',?'*15),\
-                data.as_matrix())
+              'INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
+                .format(ID,',?'*15),data.as_matrix())
         except Exception as err:
             print(str(err))
             print('Error when processing job {0} with ID {1}'.format(name,ID))
@@ -52,17 +53,20 @@ def insert_PV(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
 
 def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
     c.execute('drop table if exists jFacts;')
-    c.execute('''create table jFacts(jID int, machine text,
+    c.execute('''create table jFacts(jID int, duration real, duration2 text,
+                 start text, end text, machine text, cores int, steps int,
+                 prel_duration real, sec_computed real
               );''')
     c.execute('SELECT jID, jName FROM jData;')
     jobs_in_jData=c.fetchall()
     jobs={name:ID for (ID,name) in jobs_in_jData}
     for name,ID in jobs.items():
         try:
-            data=read_facts(rootf,name)
-            c.executemany(\
-                'INSERT INTO jPV VALUES ({0}{1});'.format(ID,',?'*15),\
-                data.as_matrix())
+            dictio=read_facts(name,rootf)
+            columns=['jID']+list(dictio.keys())
+            c.execute(\
+                'INSERT INTO jFacts('+','.join(columns)+') VALUES ({0}{1});'\
+                .format(ID,',?'*len(dictio)),tuple(dictio.values()))
         except Exception as err:
             print(str(err))
             print('Error when processing job {0} with ID {1}'.format(name,ID))
@@ -73,7 +77,7 @@ def read_PV_result(file):
     clean=result.drop_duplicates('X')
     return clean
 
-def read_facts(rootf,name):
+def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
     # Read start and end times from log file
     dates=[]
     errors=[]
@@ -132,17 +136,30 @@ def read_facts(rootf,name):
         print(err_inp)
         errors.append(err_inp)
     
-    return {'start':dates[0],'end':dates[-1],\
+    return {'start':str(dates[0]),'end':str(dates[-1]),\
             'duration':duration,'duration2':duration2,\
             'machine':machine,'cores':cores,'sec_computed':sec_computed,\
-            'errors':errors,'steps':len(steps),'prel_duration':prel_dur}
+            'steps':len(steps),'prel_duration':prel_dur}
 
 #if __name__ == "__main__":
 if False:
-    start=time.clock()
-    db,c=create_DB('dbtest4.db')
+    step0=time.clock()
+    db,c=create_DB('dbtest7.db')
+    step1=time.clock()
+    print('%.4g'%(step1-step0)+'s to create')
+    
+    step1=time.clock()
     insert_PV(c)
     db.commit()
-    end=time.clock()
-    print(end-start)
+    step2=time.clock()
+    print('%.4g'%(step2-step1)+'s to insert PV')
+    
+    step1=time.clock()
+    insert_facts(c)
+    db.commit()
+    step2=time.clock()
+    print('%.4g'%(step2-step1)+'s to insert Facts')
+    
+    
+    print('%.4g'%(step2-step0)+'s Total')
     
