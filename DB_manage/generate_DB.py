@@ -10,17 +10,13 @@ import sqlite3 as sql
 import numpy as np
 import pandas as pd
 import time
+from datetime import datetime
 
 def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     db=sql.connect(rootf+'/'+db_file)
     c=db.cursor()
     c.execute('drop table if exists jData;')
-#    c.execute('drop table if exists jPV;')
     c.execute('create table jData(jID int, jName text);')
-#    c.execute('''create table jPV(jID int, X real,
-#              P1 real, P2 real, P3 real, P4 real, P5 real, P6 real, P7 real,
-#              V1 real, V2 real, V3 real, V4 real, V5 real, V6 real, V7 real
-#              );''')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -49,12 +45,12 @@ def insert_PV(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
             c.executemany(\
                 'INSERT INTO jPV VALUES ({0}{1});'.format(ID,',?'*15),\
                 data.as_matrix())
-        except BaseException as err:
+        except Exception as err:
             print(str(err))
             print('Error when processing job {0} with ID {1}'.format(name,ID))
             print('We keep working anyway\n{0}'.format('_'*79))
 
-def insert_facts(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
+def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
     c.execute('drop table if exists jFacts;')
     c.execute('''create table jFacts(jID int, machine text,
               );''')
@@ -67,7 +63,7 @@ def insert_facts(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
             c.executemany(\
                 'INSERT INTO jPV VALUES ({0}{1});'.format(ID,',?'*15),\
                 data.as_matrix())
-        except BaseException as err:
+        except Exception as err:
             print(str(err))
             print('Error when processing job {0} with ID {1}'.format(name,ID))
             print('We keep working anyways\n{0}'.format('_'*79))
@@ -78,10 +74,71 @@ def read_PV_result(file):
     return clean
 
 def read_facts(rootf,name):
-    pass
+    # Read start and end times from log file
+    dates=[]
+    errors=[]
+    try:
+        with open(rootf+'/'+name+'/'+name+'.log','r') as logfile:
+            for line in logfile:
+                line=line.strip()
+                try:
+                    date=datetime.strptime(line,"%a %d %b %Y %I:%M:%S %p EDT")
+                    dates.append(date)
+                except:
+                    pass
+    except Exception as err_log:
+        print(err_log)
+        dates=[datetime.fromordinal(1)]*2
+        errors.append(err_log)
+    duration=(dates[-1]-dates[0]).total_seconds()/3600
+    # Read machine from .dat file
+    try:
+        with open(rootf+'/'+name+'/'+name+'.dat','r') as datfile:
+            raw=datfile.read(1000)
+        raw=raw.split(' machine ')
+        raw=raw[1].splitlines()
+        machine=raw[0].strip()
+    except Exception as err_dat:
+        print(err_dat)
+        machine=''
+        errors.append(err_dat)
+    # Read a lotta things from .sta file
+    try:
+        with open(rootf+'/'+name+'/'+name+'.sta','r') as stafile:
+            raw=stafile.read()
+        raw=raw.split('Domain level parallelization will be used with ',1)
+        raw=raw[1].split(' processors.',1)
+        cores=int(raw[0])
+        raw=raw[1].split('INSTANCE WITH CRITICAL ELEMENT:')
+        last_line=raw[-2].split()
+        sec_computed=float(last_line[-7])
+        duration2=last_line[-6]
+    except Exception as err_sta:
+        print(err_sta)
+        errors.append(err_sta)
     
+    # Read from job file, inp
+    try:
+        with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
+            raw=jobfile.read()
+        raw=raw.split('** STEP: ')
+        pre_steps=raw[0]
+        steps=raw[1:]
+        # Read pre-load step
+        prel_dur=steps[0].find('*Dynamic, Explicit')
+        prel_dur=steps[0][prel_dur:].splitlines()
+        prel_dur=float(prel_dur[1].split()[-1])
+    except Exception as err_inp:
+        print(err_inp)
+        errors.append(err_inp)
+    
+    return {'start':dates[0],'end':dates[-1],\
+            'duration':duration,'duration2':duration2,\
+            'machine':machine,'cores':cores,'sec_computed':sec_computed,\
+            'errors':errors,'steps':len(steps),'prel_duration':prel_dur}
+
 #if __name__ == "__main__":
-if True:
+if False:
     start=time.clock()
     db,c=create_DB('dbtest4.db')
     insert_PV(c)
