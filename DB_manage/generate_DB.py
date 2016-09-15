@@ -7,7 +7,6 @@ Created on Mon Sep 12 15:14:31 2016
 
 import os
 import sqlite3 as sql
-import numpy as np
 import pandas as pd
 import time
 from datetime import datetime
@@ -62,11 +61,12 @@ def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
     jobs={name:ID for (ID,name) in jobs_in_jData}
     for name,ID in jobs.items():
         try:
-            dictio=read_facts(name,rootf)
+            dictio=read_facts(name,rootf=rootf)
             columns=['jID']+list(dictio.keys())
             c.execute(\
-                'INSERT INTO jFacts('+','.join(columns)+') VALUES ({0}{1});'\
-                .format(ID,',?'*len(dictio)),tuple(dictio.values()))
+                'INSERT INTO jFacts({2}) VALUES ({0}{1});'\
+                .format(ID,',?'*len(dictio),','.join(columns)),\
+                tuple(dictio.values()))
         except Exception as err:
             print(str(err))
             print('Error when processing job {0} with ID {1}'.format(name,ID))
@@ -74,15 +74,15 @@ def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
 
 def insert_materials(c,rootf='D:/users/eta2/hCxBvf'):
     materials=['a','b','af','bf','a_s','bs','afs','bfs','D',\
-               't0','m','n','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
+               't0','m','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
                'Frac_Lat','ip','lr']
     sql_create_table=' real, '.join(materials)+' real'
-#    sql_
+    sql_fill_table=','.join(materials)
     parts=['RA','RV','LA','LV','PA']
-    files={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
-    files['PA']='mech-mat-PASSIVE.inp'
+    matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
+    matfiles['PA']='mech-mat-PASSIVE.inp'
     for part in parts:
-        table_name='jMat'+part
+        table_name='j'+part
         c.execute('drop table if exists %s;'%table_name)
         c.execute('create table {0}(jID int, {1});'\
                   .format(table_name,sql_create_table))
@@ -90,7 +90,31 @@ def insert_materials(c,rootf='D:/users/eta2/hCxBvf'):
     jobs_in_jData=c.fetchall()
     jobs={name:ID for (ID,name) in jobs_in_jData}
     for name,ID in jobs.items():
-        lr_dict=read_lr(name,rootf='D:/users/eta2/hCxBvf')
+        lr_dict=read_lr(name,rootf)
+        for part, matfile in matfiles.items():
+            try:
+                t_name='j'+part
+                mat_params=read_mat(name,matfile,rootf)+[lr_dict.pop(part,None)]
+                sql_command='INSERT INTO {0}(jID,{1}) VALUES ({2}{3});'\
+                    .format(t_name,sql_fill_table,ID,',?'*len(mat_params))
+                c.execute(sql_command,mat_params)
+            except Exception as err:
+                print(err)
+                print('Error when working with {0} on job {1}:{2}'.format(\
+                      part,ID,name))
+
+def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
+    fullpath=rootf+'/'+name+'/'+matfile
+    mat_params=[]
+    try:
+        with open(fullpath) as matfile:
+            lines=matfile.readlines()
+        mat_params=','.join(lines[4:7]).split(',')
+        mat_params=[float(x) for x in mat_params if len(x.strip())>0]
+    except Exception as err:
+        print(err)
+    return mat_params
+        
 
 def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
     fullpath=rootf+'/'+name+'/mech-mat-RV_ACTIVE.inp'
@@ -194,9 +218,9 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
 
 
 #if __name__ == "__main__":
-if False:
+if True:
     step0=time.clock()
-    db,c=create_DB('dbtest7.db')
+    db,c=create_DB('dbdefinite.db')
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create')
     
@@ -212,6 +236,11 @@ if False:
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to insert Facts')
     
+    step1=time.clock()
+    insert_materials(c)
+    db.commit()
+    step2=time.clock()
+    print('%.4g'%(step2-step1)+'s to insert Materials')
     
     print('%.4g'%(step2-step0)+'s Total')
     
