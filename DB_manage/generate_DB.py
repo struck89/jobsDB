@@ -72,6 +72,57 @@ def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
             print('Error when processing job {0} with ID {1}'.format(name,ID))
             print('We keep working anyways\n{0}'.format('_'*79))
 
+def insert_materials(c,rootf='D:/users/eta2/hCxBvf'):
+    materials=['a','b','af','bf','a_s','bs','afs','bfs','D',\
+               't0','m','n','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
+               'Frac_Lat','ip','lr']
+    sql_create_table=' real, '.join(materials)+' real'
+#    sql_
+    parts=['RA','RV','LA','LV','PA']
+    files={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
+    files['PA']='mech-mat-PASSIVE.inp'
+    for part in parts:
+        table_name='jMat'+part
+        c.execute('drop table if exists %s;'%table_name)
+        c.execute('create table {0}(jID int, {1});'\
+                  .format(table_name,sql_create_table))
+    c.execute('SELECT jID, jName FROM jData;')
+    jobs_in_jData=c.fetchall()
+    jobs={name:ID for (ID,name) in jobs_in_jData}
+    for name,ID in jobs.items():
+        lr_dict=read_lr(name,rootf='D:/users/eta2/hCxBvf')
+
+def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
+    fullpath=rootf+'/'+name+'/mech-mat-RV_ACTIVE.inp'
+    lr_dict={}
+    try:
+        with open(fullpath) as RVfile:
+            raw=RVfile.read()
+        start=raw.find('*Initial')
+        lines=raw[start:].strip().splitlines()[1:]
+        for line in lines:
+            if 'Ventricles' in line and 'ALL-NODES' in line:
+                lr_dict['LV']=float(line.split(',')[-1])
+                lr_dict['RV']=float(line.split(',')[-1])
+                lr_dict['PA']=float(line.split(',')[-1])
+            elif 'R_A' in line:
+                lr_dict['RA']=float(line.split(',')[-1])
+            elif 'L_A' in line:
+                lr_dict['LA']=float(line.split(',')[-1])
+            elif 'Ventricles' in line and 'LV' in line:
+                lr_dict['LV']=float(line.split(',')[-1])
+            elif 'Ventricles' in line and 'RV' in line:
+                lr_dict['RV']=float(line.split(',')[-1])
+    except Exception as err:
+        print(err)
+        print('Problem with %s material when retrieving lr')
+    if not lr_dict:
+        print("We couldn't get the lr values for %s"%name)
+    elif 1<len(lr_dict)<4:
+        print('We could only find lr values of {0} for {1}'\
+              .format(str(list(lr_dict.keys())),name))
+    return lr_dict
+
 def read_PV_result(file):
     result=pd.read_csv(file)
     clean=result.drop_duplicates('X')
@@ -104,7 +155,7 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
         machine=raw[0].strip()
     except Exception as err_dat:
         print(err_dat)
-        machine=''
+        machine='error'
         errors.append(err_dat)
     # Read a lotta things from .sta file
     try:
@@ -140,6 +191,7 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
             'duration':duration,'duration2':duration2,\
             'machine':machine,'cores':cores,'sec_computed':sec_computed,\
             'steps':len(steps),'prel_duration':prel_dur}
+
 
 #if __name__ == "__main__":
 if False:
