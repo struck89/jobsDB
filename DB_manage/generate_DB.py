@@ -10,12 +10,16 @@ import sqlite3 as sql
 import pandas as pd
 import time
 from datetime import datetime
+from hashlib import md5
+
+def hashstr(name):
+    return md5(name.lower().encode()).hexdigest()[-6:].upper()
 
 def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     db=sql.connect(rootf+'/'+db_file)
     c=db.cursor()
     c.execute('drop table if exists jData;')
-    c.execute('create table jData(jID int, jName text);')
+    c.execute('create table jData(jID int, jName text, jHash text);')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -23,9 +27,11 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
           (folder in ODBs_cand and \
            os.path.isdir(rootf+'/'+folder))]
     ODBs.sort()
+    hashes=[hashstr(name) for name in ODBs]
     #insert all jobs and jobnames in DB
-    what_to_insert=zip(range(1,len(ODBs)+1),ODBs)
-    c.executemany('INSERT INTO jData VALUES (?,?)',list(what_to_insert))
+    what_to_insert=zip(range(1,len(ODBs)+1),ODBs,hashes)
+    c.executemany('INSERT INTO jData(jID,jName,jHash) VALUES (?,?,?)',\
+                  list(what_to_insert))
     db.commit()
     return db,c
     
@@ -220,9 +226,12 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
 #if __name__ == "__main__":
 if True:
     step0=time.clock()
-    db,c=create_DB('dbdefinite.db')
+    db,c=create_DB('dbwithhash.db')
     step1=time.clock()
-    print('%.4g'%(step1-step0)+'s to create')
+    print('%.4g'%(step1-step0)+'s to create and hash names')
+    
+    c.execute('SELECT count(*) FROM jData;')
+    print('%i jobs in the database'%c.fetchall()[0][0])
     
     step1=time.clock()
     insert_PV(c)
