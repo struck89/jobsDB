@@ -114,7 +114,7 @@ def insert_hemodynamic_params(c):
     hemod_params=['SBP','DBP','MAP','MAPi','RVSP','RVDP','PASP','PADP','MPAP',\
            'MPAPi','RAP','CVP','LAP','PAOP','SV','RVSV','CO','SVR','PVR',\
            'LVSW','RVSW','EF','RVEF','MAX_LV_P','MAX_RV_P','MAX_LV_V',\
-           'MAX_RV_V','MIN_LV_P','MIN_RV_P','MIN_LV_V','MIN_RV_V']
+           'MAX_RV_V','MIN_LV_P','MIN_RV_P','MIN_LV_V','MIN_RV_V','LV_P_CONV']
     sql_create_table=' real, '.join(hemod_params)+' real'
 #    sql_fill_table=','.join(materials)
     c.execute('drop table if exists jHem;')
@@ -301,6 +301,16 @@ def compute_hem_params(c,ID):
     h_pars['MIN_RV_P']=7500*tPV['RV_P'].min()
     h_pars['MIN_LV_V']=0.001*tPV['LV_V'].min()
     h_pars['MIN_RV_V']=0.001*tPV['RV_V'].min()
+    #LV P Converged?
+    c.execute('''SELECT X-sec_computed+1 as t, P6
+             FROM jFacts, jPV
+             WHERE jFacts.jID=jPV.jID AND jPV.jID=?
+             AND t>=-1
+             AND t<=0
+             ORDER BY X''',(str(ID),))
+    columns=['X','LV_P']
+    prev_beat=pd.DataFrame(c.fetchall(),columns=columns)
+    h_pars['LV_P_CONV']=100*(tPV['LV_P'].max()-prev_beat['LV_P'].max())/prev_beat['LV_P'].max()
     return h_pars
 
 #if __name__ == "__main__":
@@ -337,5 +347,6 @@ if True:
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to compute and insert the hemodynamic parameters')
     
-    print('%.4g'%(step2-step0)+'s Total')
+    db.close()
     
+    print('%.4g'%(step2-step0)+'s Total')
