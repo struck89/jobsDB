@@ -8,6 +8,7 @@ Created on Mon Sep 12 15:14:31 2016
 import os
 import sqlite3 as sql
 import pandas as pd
+import numpy as np
 import time
 from datetime import datetime
 from hashlib import md5
@@ -19,7 +20,7 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     db=sql.connect(rootf+'/'+db_file)
     c=db.cursor()
     c.execute('drop table if exists jData;')
-    c.execute('create table jData(jID int, jName text, jHash text);')
+    c.execute('create table jData(jID int primary key, jName text, jHash text);')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -58,9 +59,9 @@ def insert_PV(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
 
 def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
     c.execute('drop table if exists jFacts;')
-    c.execute('''create table jFacts(jID int, duration real, duration2 text,
-                 start text, end text, machine text, cores int, steps int,
-                 prel_duration real, sec_computed real
+    c.execute('''create table jFacts(jID int primary key, duration real, 
+                 duration2 text, start text, end text, machine text, cores int, 
+                 steps int, prel_duration real, sec_computed real
               );''')
     c.execute('SELECT jID, jName FROM jData;')
     jobs_in_jData=c.fetchall()
@@ -90,7 +91,7 @@ def insert_materials(c,rootf='D:/users/eta2/hCxBvf'):
     for part in parts:
         table_name='j'+part
         c.execute('drop table if exists %s;'%table_name)
-        c.execute('create table {0}(jID int, {1});'\
+        c.execute('create table {0}(jID int primary key, {1});'\
                   .format(table_name,sql_create_table))
     c.execute('SELECT jID, jName FROM jData;')
     jobs_in_jData=c.fetchall()
@@ -108,6 +109,26 @@ def insert_materials(c,rootf='D:/users/eta2/hCxBvf'):
                 print(err)
                 print('Error when working with {0} on job {1}:{2}'.format(\
                       part,ID,name))
+
+def insert_hemodynamic_params(c):
+    hemod_params=['SBP','DBP','MAP','MAPi','RVSP','RVDP','PASP','PADP','MPAP',\
+           'MPAPi','RAP','CVP','LAP','PAOP','SV','RVSV','CO','SVR','PVR',\
+           'LVSW','RVSW','EF','RVEF','MAX_LV_P','MAX_RV_P','MAX_LV_V',\
+           'MAX_RV_V','MIN_LV_P','MIN_RV_P','MIN_LV_V','MIN_RV_V']
+    sql_create_table=' real, '.join(hemod_params)+' real'
+#    sql_fill_table=','.join(materials)
+    c.execute('drop table if exists jHem;')
+    c.execute('create table jHem(jID int primary key, {0});'\
+              .format(sql_create_table))
+    c.execute('SELECT jID FROM jData;')
+    jobs_IDs=c.fetchall()
+    for (ID,) in jobs_IDs:
+        h_params=compute_hem_params(c,ID)
+        columns=['jID']+list(h_params.keys())
+        c.execute(\
+            'INSERT INTO jHem({2}) VALUES ({0}{1});'\
+            .format(ID,',?'*len(h_params),','.join(columns)),\
+            tuple(h_params.values()))
 
 def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
     fullpath=rootf+'/'+name+'/'+matfile
@@ -222,13 +243,72 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
             'machine':machine,'cores':cores,'sec_computed':sec_computed,\
             'steps':len(steps),'prel_duration':prel_dur}
 
+def compute_hem_params(c,ID):
+    c.execute('''SELECT X-sec_computed+1 as t, P1, P2, P3, P4, P5, P6, P7,
+                                           V1, V2, V3, V4, V5, V6, V7
+             FROM jFacts, jPV
+             WHERE jFacts.jID=jPV.jID AND jPV.jID=?
+             AND t>=0
+             ORDER BY X''',(str(ID),))
+    chambers=['VEN','RA','RV','PUL','LA','LV','ART']
+    p_chambers=[part+'_P' for part in chambers]
+    v_chambers=[part+'_V' for part in chambers]
+    columns=['X']+p_chambers+v_chambers
+    tPV=pd.DataFrame(c.fetchall(),columns=columns)
+    t=tPV['X']
+    # h_pars === hemodynamic parameters ; cf=== conversion factor
+    h_pars={}
+    cf=7500
+    #Systolic and diastolic blood pressure (arterial)
+    h_pars['SBP']=7500*tPV['ART_P'].max()
+    h_pars['DBP']=7500*tPV['ART_P'].min()
+    # Mean arterial pressure, lab formula and real integrated formula
+    h_pars['MAP']=(h_pars['SBP']+2*h_pars['DBP'])/3
+    h_pars['MAPi']=7500*np.trapz(tPV['ART_P'],t)/(t.max()-t.min())
+    #Systolic and diastolic RV pressure
+    h_pars['RVSP']=7500*tPV['RV_P'].max()
+    h_pars['RVDP']=7500*tPV['RV_P'].min()
+    #Systolic, diastolic, and mean pulmonary arterial pressure (and integrated)
+    h_pars['PASP']=7500*tPV['PUL_P'].max()
+    h_pars['PADP']=7500*tPV['PUL_P'].min()
+    h_pars['MPAP']=(h_pars['PASP']+2*h_pars['PADP'])/3
+    h_pars['MPAPi']=7500*np.trapz(tPV['PUL_P'],t)/(t.max()-t.min())
+    #Mean right and left atrial and venous pressure
+    h_pars['RAP']=7500*np.trapz(tPV['RA_P'],t)/(t.max()-t.min())
+    h_pars['CVP']=7500*np.trapz(tPV['VEN_P'],t)/(t.max()-t.min())
+    h_pars['LAP']=7500*np.trapz(tPV['LA_P'],t)/(t.max()-t.min())
+    h_pars['PAOP']=h_pars['LAP']
+    #Cardiac output and Stroke volume
+    HR=60 #This will have to be a function of each beat in the future
+    h_pars['SV']=0.001*(tPV['LV_V'].max()-tPV['LV_V'].min())
+    h_pars['RVSV']=0.001*(tPV['RV_V'].max()-tPV['RV_V'].min())
+    h_pars['CO']=HR*h_pars['SV']/1000
+    #Systemic and pulmonary Vascular Resistance
+    h_pars['SVR']=80*(h_pars['MAP']-h_pars['RAP'])/h_pars['CO']
+    h_pars['PVR']=80*(h_pars['MPAP']-h_pars['PAOP'])/h_pars['CO']
+    #Stroke work
+    h_pars['LVSW']=np.trapz(tPV['LV_P'],tPV['LV_V'])
+    h_pars['RVSW']=np.trapz(tPV['RV_P'],tPV['RV_V'])
+    #Ejection Fraction
+    h_pars['EF']=100*h_pars['SV']/(0.001*tPV['LV_V'].max())
+    h_pars['RVEF']=100*h_pars['RVSV']/(0.001*tPV['RV_V'].max())
+    #Other interesting params:
+    h_pars['MAX_LV_P']=7500*tPV['LV_P'].max()
+    h_pars['MAX_RV_P']=7500*tPV['RV_P'].max()
+    h_pars['MAX_LV_V']=0.001*tPV['LV_V'].max()
+    h_pars['MAX_RV_V']=0.001*tPV['RV_V'].max()
+    h_pars['MIN_LV_P']=7500*tPV['LV_P'].min()
+    h_pars['MIN_RV_P']=7500*tPV['RV_P'].min()
+    h_pars['MIN_LV_V']=0.001*tPV['LV_V'].min()
+    h_pars['MIN_RV_V']=0.001*tPV['RV_V'].min()
+    return h_pars
 
 #if __name__ == "__main__":
 if True:
     step0=time.clock()
-    db,c=create_DB('dbwithhash.db')
+    db,c=create_DB('dbPVhashhemo.db')
     step1=time.clock()
-    print('%.4g'%(step1-step0)+'s to create and hash names')
+    print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
     c.execute('SELECT count(*) FROM jData;')
     print('%i jobs in the database'%c.fetchall()[0][0])
@@ -250,6 +330,12 @@ if True:
     db.commit()
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to insert Materials')
+    
+    step1=time.clock()
+    insert_hemodynamic_params(c)
+    db.commit()
+    step2=time.clock()
+    print('%.4g'%(step2-step1)+'s to compute and insert the hemodynamic parameters')
     
     print('%.4g'%(step2-step0)+'s Total')
     
