@@ -315,8 +315,9 @@ def compute_hem_params(c,ID):
 
 #if __name__ == "__main__":
 if True:
+    rootf='C:/Users/Enric/Documents/hCxBvf'
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemo.db')
+    db,c=create_DB('dbPVhashhemo2.db',rootf=rootf)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
@@ -324,19 +325,19 @@ if True:
     print('%i jobs in the database'%c.fetchall()[0][0])
     
     step1=time.clock()
-    insert_PV(c)
+    insert_PV(c,rootf=rootf)
     db.commit()
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to insert PV')
     
     step1=time.clock()
-    insert_facts(c)
+    insert_facts(c,rootf=rootf)
     db.commit()
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to insert Facts')
     
     step1=time.clock()
-    insert_materials(c)
+    insert_materials(c,rootf=rootf)
     db.commit()
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to insert Materials')
