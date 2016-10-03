@@ -1,0 +1,14 @@
+*Fluid Exchange Property, name=Link-Aortic-Valve, type=BULK VISCOSITY
+536.,0.
+*Fluid Exchange Property, name=Link-Body-Resistance, type=BULK VISCOSITY
+ 59965.5,0.
+*Fluid Exchange Property, name=Link-Mitral-Valve, type=BULK VISCOSITY
+ 2359.04,0.
+*Fluid Exchange Property, name=Link-Pulmonary-Resistance, type=BULK VISCOSITY
+ 1751.03,0.
+*Fluid Exchange Property, name=Link-Pulmonary-Valve, type=BULK VISCOSITY
+ 423.47,0.
+*Fluid Exchange Property, name=Link-Tricuspid-Valve, type=BULK VISCOSITY
+ 429.5,0.
+*Fluid Exchange Property, name=Link-Venous-Resistance, type=BULK VISCOSITY
+ 429.5,0.

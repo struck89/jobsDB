@@ -1,0 +1,50 @@
+** ----------------------------------------------------------------
+** 
+** STEP: PRE-LOAD
+** 
+*Step, name=PRE-LOAD, nlgeom=YES
+Preload the structure to 70% diastole
+*Dynamic, Explicit
+, 0.3
+*Bulk Viscosity
+0.06, 1.2
+*Field, var=1, amp=Time
+Ventricles-1.ALL-NODES, 1.0
+R_Atrium-1.ALL-NODES, 1.0
+L_Atrium-1.ALL-NODES, 1.0
+** Mass Scaling: Semi-Automatic
+**               Whole Model
+*Variable Mass Scaling, dt=2.5e-06, type=below min, frequency=10
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: Preload-Aortic_Arch Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+Aortic_Arch-1.CAV-RP, 8, 8, 0.0005333
+** Name: Preload-Arterial-Comp Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+Arterial_Compliance-1.RP, 8, 8, 0.01067
+** Name: Preload-LA Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+L_Atrium-1.CAV-RP, 8, 8, 0.0005333
+** Name: Preload-LV Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+LV-RP, 8, 8, 0.0005333
+** Name: Preload-Pulmonary-Comp Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+Pulmonary_Compliance-1.RP, 8, 8, 0.001067
+** Name: Preload-Pulmonary_Trunk Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+Pulmonary_Trunk-1.CAV-RP, 8, 8, 0.001067
+** Name: Preload-RA Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+R_Atrium-1.CAV-RP, 8, 8, 0.0002666
+** Name: Preload-RV Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+RV-RP, 8, 8, 0.0002666
+** Name: Preload-SVC Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+Superior_Vena_Cava-1.CAV-RP, 8, 8, 0.0002666
+** Name: Preload-Venous-Comp Type: Fluid cavity pressure
+*Boundary, amplitude=Preload
+Venous_Compliance-1.RP, 8, 8, 0.0005332

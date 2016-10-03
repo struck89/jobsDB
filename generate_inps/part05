@@ -1,0 +1,41 @@
+** 
+** MATERIALS
+** 
+** Artery behavior based upon Figure 3 of Azadani et al.
+*Material, name=ABQ_CARDIAC_TISSUE_HYBRID-ARTERY
+*Depvar
+      4,
+*Include, input=mech-mat-ARTERY-enc.inp, password=DS_Heart
+** Passive and active material behavior for the left atrium
+*Material, name=ABQ_CARDIAC_TISSUE_HYBRID-LA_ACTIVE
+*Depvar
+      4,
+*Include, input=mech-mat-LA_ACTIVE.inp
+** Passive and active material behavior for the left ventricle.
+*Material, name=ABQ_CARDIAC_TISSUE_HYBRID-LV_ACTIVE
+*Depvar
+      4,
+*Include, input=mech-mat-LV_ACTIVE.inp
+*Material, name=ABQ_CARDIAC_TISSUE_HYBRID-PASSIVE
+*Depvar
+      4,
+*Include, input=mech-mat-PASSIVE.inp
+** Passive and active material behavior for the right atrium
+*Material, name=ABQ_CARDIAC_TISSUE_HYBRID-RA_ACTIVE
+*Depvar
+      4,
+*Include, input=mech-mat-RA_ACTIVE.inp
+** Passive and active material behavior of the right ventricle
+*Material, name=ABQ_CARDIAC_TISSUE_HYBRID-RV_ACTIVE
+*Depvar
+      4,
+*Include, input=mech-mat-RV_ACTIVE.inp
+** 
+** INTERACTION PROPERTIES
+** 
+*Fluid Behavior, name=Blood
+*Fluid Density
+1.027e-09
+*Fluid Bulk Modulus
+ 2.4,
+*Surface Interaction, name=Contact-Global

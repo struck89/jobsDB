@@ -1,0 +1,4 @@
+*Amplitude, name=Preload, time=TOTAL TIME, definition=SMOOTH STEP
+             0.,              0.,             0.3,              1.
+*Amplitude, name=TIME, time=TOTAL TIME
+             0.,              0.,             20.,             20.

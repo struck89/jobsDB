@@ -1,0 +1,147 @@
+** ----------------------------------------------------------------
+** 
+** STEP: BEAT1
+** 
+*Step, name=BEAT1, nlgeom=YES
+Active excitation phase of cardiac cycle #1
+*Dynamic, Explicit
+, 0.5
+*Bulk Viscosity
+0.06, 1.2
+*Fluid Exchange Activation
+LINK-ARTERIAL-VENOUS
+LINK-PULMONARY-LA
+LINK-VENOUS-RA
+*Fluid Exchange Activation, outflow only
+LINK-LA-LV
+LINK-LV-ARTERIAL
+LINK-RA-RV
+LINK-RV-PULMONARY
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: Compliance-Axial Type: Displacement/Rotation
+*Boundary, op=NEW
+Compliance-AXIAL, 2, 2
+Compliance-AXIAL, 3, 3
+Compliance-AXIAL, 4, 4
+Compliance-AXIAL, 5, 5
+Compliance-AXIAL, 6, 6
+** Name: Compliance-Fixed Type: Symmetry/Antisymmetry/Encastre
+*Boundary, op=NEW
+Compliance-FIXED, ENCASTRE
+** Name: Ground Type: Symmetry/Antisymmetry/Encastre
+*Boundary, op=NEW
+GROUND, ENCASTRE
+** Name: Preload-Aortic_Arch Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-Arterial-Comp Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-LA Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-LV Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-Pulmonary-Comp Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-Pulmonary_Trunk Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-RA Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-RV Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-SVC Type: Fluid cavity pressure
+*Boundary, op=NEW
+** Name: Preload-Venous-Comp Type: Fluid cavity pressure
+*Boundary, op=NEW
+** 
+** PREDEFINED FIELDS
+** 
+** Name: Aortic_Arch   Type: Temperature
+*Temperature, op=NEW
+Aortic_Arch-1.ALL_E, -80.
+** Name: Excitation-01   Type: Temperature
+*Temperature, op=NEW, file=heart-elec-coarse.odb, bstep=1
+** Name: L_Atrium-Ini   Type: Temperature
+*Temperature, op=NEW
+** Name: Pulmonary_Trunk   Type: Temperature
+*Temperature, op=NEW
+Pulmonary_Trunk-1.ALL_E, -80.
+** Name: R_Atrium-Ini   Type: Temperature
+*Temperature, op=NEW
+** Name: Superior_Vena_Cava   Type: Temperature
+*Temperature, op=NEW
+Superior_Vena_Cava-1.ALL_E, -80.
+** Name: Ventricles-Ini   Type: Temperature
+*Temperature, op=NEW
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, number interval=1, time marks=NO
+*Output, field, number interval=0
+** 
+** HISTORY OUTPUT: ArterialRP
+** 
+*Output, history, time interval=0.0005
+*Node Output, nset=Arterial-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: ArterialCONN
+** 
+*Element Output, elset=Arterial-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: LA
+** 
+*Node Output, nset=L_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RA
+** 
+*Node Output, nset=R_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: LV
+** 
+*Node Output, nset=LV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: PulmonaryRP
+** 
+*Node Output, nset=Pulmonary-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: PulmonaryCONN
+** 
+*Element Output, elset=Pulmonary-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: Arterial-Compliance
+** 
+*Node Output, nset=Arterial_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Pulmonary-Compliance
+** 
+*Node Output, nset=Pulmonary_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Venous-Compliance
+** 
+*Node Output, nset=Venous_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RV
+** 
+*Node Output, nset=RV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: VenousRP
+** 
+*Node Output, nset=Venous-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: VenousCONN
+** 
+*Element Output, elset=Venous-STIFF
+CEF1, CTF1, CVF1
+*End Step

@@ -1,0 +1,15 @@
+*Connector Elasticity, component=1
+15.,
+*Connector Damping, component=1
+ 0.12,
+*Connector Behavior, name=Stiffness-Venous
+*Connector Elasticity, component=1
+ 0.13,
+*Connector Damping, component=1
+ 0.0009,
+*Connector Behavior, name=Stiffness-Pulmonary
+*Connector Elasticity, component=1
+ 2.478,
+*Connector Damping, component=1
+ 0.06,
+ 

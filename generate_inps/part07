@@ -1,0 +1,76 @@
+*Distribution Table, name=L_Atrium_Table
+coord3d, coord3d
+*Distribution Table, name=Ventricles_Table
+coord3d, coord3d
+*Distribution Table, name=R_Atrium_Table
+coord3d, coord3d
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: Compliance-Axial Type: Displacement/Rotation
+*Boundary
+Compliance-AXIAL, 2, 2
+Compliance-AXIAL, 3, 3
+Compliance-AXIAL, 4, 4
+Compliance-AXIAL, 5, 5
+Compliance-AXIAL, 6, 6
+** Name: Compliance-Fixed Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+Compliance-FIXED, ENCASTRE
+** Name: Ground Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+GROUND, ENCASTRE
+** 
+** PREDEFINED FIELDS
+** 
+** Name: Aortic_Arch   Type: Temperature
+*Initial Conditions, type=TEMPERATURE
+Aortic_Arch-1.ALL_E, -80.
+** Name: L_Atrium-Ini   Type: Temperature
+*Initial Conditions, type=TEMPERATURE
+L_Atrium-1.ALL-NODES, -80.
+** Name: Pulmonary_Trunk   Type: Temperature
+*Initial Conditions, type=TEMPERATURE
+Pulmonary_Trunk-1.ALL_E, -80.
+** Name: R_Atrium-Ini   Type: Temperature
+*Initial Conditions, type=TEMPERATURE
+R_Atrium-1.ALL-NODES, -80.
+** Name: Superior_Vena_Cava   Type: Temperature
+*Initial Conditions, type=TEMPERATURE
+Superior_Vena_Cava-1.ALL_E, -80.
+** Name: Ventricles-Ini   Type: Temperature
+*Initial Conditions, type=TEMPERATURE
+Ventricles-1.ALL-ELS, -80.
+** 
+** INTERACTIONS
+** 
+** Interaction: CAV-AORTA
+*Fluid Cavity, name=CAV-AORTA, behavior=Blood, refnode=Aortic_Arch-1.CAV-RP, surface=AORTA-CAV
+
+** Interaction: CAV-ARTERIAL-COMP
+*Fluid Cavity, name=CAV-ARTERIAL-COMP, behavior=Blood, refnode=Arterial_Compliance-1.RP, surface=Arterial_Compliance-1.INNER
+
+** Interaction: CAV-LA
+*Fluid Cavity, name=CAV-LA, behavior=Blood, refnode=L_Atrium-1.CAV-RP, surface=L_Atrium-1.LA-CAV
+
+** Interaction: CAV-LV
+*Fluid Cavity, name=CAV-LV, behavior=Blood, refnode=LV-RP, surface=LV-CAV
+
+** Interaction: CAV-PULMONARY-COMP
+*Fluid Cavity, name=CAV-PULMONARY-COMP, behavior=Blood, refnode=Pulmonary_Compliance-1.RP, surface=Pulmonary_Compliance-1.INNER
+
+** Interaction: CAV-PULMONARY_TRUNK
+*Fluid Cavity, name=CAV-PULMONARY_TRUNK, behavior=Blood, refnode=Pulmonary_Trunk-1.CAV-RP, surface=Pulmonary_Trunk-1.CAV
+
+** Interaction: CAV-RA
+*Fluid Cavity, name=CAV-RA, behavior=Blood, refnode=R_Atrium-1.CAV-RP, surface=R_Atrium-1.RA-CAV
+
+** Interaction: CAV-RV
+*Fluid Cavity, name=CAV-RV, behavior=Blood, refnode=RV-RP, surface=RV-CAV
+
+** Interaction: CAV-SVC
+*Fluid Cavity, name=CAV-SVC, behavior=Blood, refnode=Superior_Vena_Cava-1.CAV-RP, surface=SVC-CAV
+
+** Interaction: CAV-VENOUS-COMP
+*Fluid Cavity, name=CAV-VENOUS-COMP, behavior=Blood, refnode=Venous_Compliance-1.RP, surface=Venous_Compliance-1.INNER
+

@@ -1,0 +1,366 @@
+** ----------------------------------------------------------------
+** 
+** STEP: BEAT2
+** 
+*Step, name=BEAT2, nlgeom=YES
+Active excitation phase of cardiac cycle #2
+*Dynamic, Explicit
+, 0.5
+*Bulk Viscosity
+0.06, 1.2
+** 
+** PREDEFINED FIELDS
+** 
+** Name: Excitation-02   Type: Temperature
+*Temperature, file=heart-elec-coarse.odb, bstep=1
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, number interval=1, time marks=NO
+*Output, field, number interval=0
+** 
+** HISTORY OUTPUT: ArterialRP
+** 
+*Output, history, time interval=0.0005
+*Node Output, nset=Arterial-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: ArterialCONN
+** 
+*Element Output, elset=Arterial-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: LA
+** 
+*Node Output, nset=L_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RA
+** 
+*Node Output, nset=R_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: LV
+** 
+*Node Output, nset=LV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: PulmonaryRP
+** 
+*Node Output, nset=Pulmonary-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: PulmonaryCONN
+** 
+*Element Output, elset=Pulmonary-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: Arterial-Compliance
+** 
+*Node Output, nset=Arterial_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Pulmonary-Compliance
+** 
+*Node Output, nset=Pulmonary_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Venous-Compliance
+** 
+*Node Output, nset=Venous_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RV
+** 
+*Node Output, nset=RV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: VenousRP
+** 
+*Node Output, nset=Venous-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: VenousCONN
+** 
+*Element Output, elset=Venous-STIFF
+CEF1, CTF1, CVF1
+*End Step
+** ----------------------------------------------------------------
+** 
+** STEP: RECOVERY2
+** 
+*Step, name=RECOVERY2, nlgeom=YES
+Passive recovery of cardiac cycle #2
+*Dynamic, Explicit
+, 0.5
+*Bulk Viscosity
+0.06, 1.2
+** 
+** PREDEFINED FIELDS
+** 
+** Name: Aortic_Arch   Type: Temperature
+*Temperature, op=NEW
+Aortic_Arch-1.ALL_E, -80.
+** Name: Excitation-02   Type: Temperature
+*Temperature, op=NEW
+** Name: Pulmonary_Trunk   Type: Temperature
+*Temperature, op=NEW
+Pulmonary_Trunk-1.ALL_E, -80.
+** Name: Superior_Vena_Cava   Type: Temperature
+*Temperature, op=NEW
+Superior_Vena_Cava-1.ALL_E, -80.
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, number interval=1, time marks=NO
+*Output, field, number interval=0
+** 
+** HISTORY OUTPUT: ArterialRP
+** 
+*Output, history, time interval=0.0005
+*Node Output, nset=Arterial-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: ArterialCONN
+** 
+*Element Output, elset=Arterial-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: LA
+** 
+*Node Output, nset=L_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RA
+** 
+*Node Output, nset=R_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: LV
+** 
+*Node Output, nset=LV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: PulmonaryRP
+** 
+*Node Output, nset=Pulmonary-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: PulmonaryCONN
+** 
+*Element Output, elset=Pulmonary-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: Arterial-Compliance
+** 
+*Node Output, nset=Arterial_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Pulmonary-Compliance
+** 
+*Node Output, nset=Pulmonary_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Venous-Compliance
+** 
+*Node Output, nset=Venous_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RV
+** 
+*Node Output, nset=RV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: VenousRP
+** 
+*Node Output, nset=Venous-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: VenousCONN
+** 
+*Element Output, elset=Venous-STIFF
+CEF1, CTF1, CVF1
+*End Step
+** ----------------------------------------------------------------
+** 
+** STEP: BEAT3
+** 
+*Step, name=BEAT3, nlgeom=YES
+Active excitation phase of cardiac cycle #3
+*Dynamic, Explicit
+, 0.5
+*Bulk Viscosity
+0.06, 1.2
+** 
+** PREDEFINED FIELDS
+** 
+** Name: Excitation-03   Type: Temperature
+*Temperature, file=heart-elec-coarse.odb, bstep=1
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, number interval=1, time marks=NO
+*Output, field, number interval=0
+** 
+** HISTORY OUTPUT: ArterialRP
+** 
+*Output, history, time interval=0.0005
+*Node Output, nset=Arterial-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: ArterialCONN
+** 
+*Element Output, elset=Arterial-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: LA
+** 
+*Node Output, nset=L_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RA
+** 
+*Node Output, nset=R_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: LV
+** 
+*Node Output, nset=LV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: PulmonaryRP
+** 
+*Node Output, nset=Pulmonary-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: PulmonaryCONN
+** 
+*Element Output, elset=Pulmonary-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: Arterial-Compliance
+** 
+*Node Output, nset=Arterial_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Pulmonary-Compliance
+** 
+*Node Output, nset=Pulmonary_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Venous-Compliance
+** 
+*Node Output, nset=Venous_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RV
+** 
+*Node Output, nset=RV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: VenousRP
+** 
+*Node Output, nset=Venous-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: VenousCONN
+** 
+*Element Output, elset=Venous-STIFF
+CEF1, CTF1, CVF1
+*End Step
+** ----------------------------------------------------------------
+** 
+** STEP: RECOVERY3
+** 
+*Step, name=RECOVERY3, nlgeom=YES
+Passive recovery of cardiac cycle #3
+*Dynamic, Explicit
+, 0.5
+*Bulk Viscosity
+0.06, 1.2
+** 
+** PREDEFINED FIELDS
+** 
+** Name: Aortic_Arch   Type: Temperature
+*Temperature, op=NEW
+Aortic_Arch-1.ALL_E, -80.
+** Name: Excitation-03   Type: Temperature
+*Temperature, op=NEW
+** Name: Pulmonary_Trunk   Type: Temperature
+*Temperature, op=NEW
+Pulmonary_Trunk-1.ALL_E, -80.
+** Name: Superior_Vena_Cava   Type: Temperature
+*Temperature, op=NEW
+Superior_Vena_Cava-1.ALL_E, -80.
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, number interval=1, time marks=NO
+*Output, field, number interval=0
+** 
+** HISTORY OUTPUT: ArterialRP
+** 
+*Output, history, time interval=0.0005
+*Node Output, nset=Arterial-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: ArterialCONN
+** 
+*Element Output, elset=Arterial-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: LA
+** 
+*Node Output, nset=L_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RA
+** 
+*Node Output, nset=R_Atrium-1.CAV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: LV
+** 
+*Node Output, nset=LV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: PulmonaryRP
+** 
+*Node Output, nset=Pulmonary-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: PulmonaryCONN
+** 
+*Element Output, elset=Pulmonary-STIFF
+CEF1, CTF1, CVF1
+** 
+** HISTORY OUTPUT: Arterial-Compliance
+** 
+*Node Output, nset=Arterial_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Pulmonary-Compliance
+** 
+*Node Output, nset=Pulmonary_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: Venous-Compliance
+** 
+*Node Output, nset=Venous_Compliance-1.RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: RV
+** 
+*Node Output, nset=RV-RP
+CMFL, CVOL, PCAV
+** 
+** HISTORY OUTPUT: VenousRP
+** 
+*Node Output, nset=Venous-RP
+A1, U1, V1
+** 
+** HISTORY OUTPUT: VenousCONN
+** 
+*Element Output, elset=Venous-STIFF
+CEF1, CTF1, CVF1
+*End Step
