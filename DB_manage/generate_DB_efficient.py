@@ -12,6 +12,7 @@ import numpy as np
 import time
 from datetime import datetime
 from hashlib import md5
+from tqdm import *
 
 def hashstr(name):
     return md5(name.lower().encode()).hexdigest()[-6:].upper()
@@ -65,6 +66,14 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('drop table if exists jHem;')
     c.execute('create table jHem(jID int primary key, {0});'\
               .format(hem_sql_create_table))
+    #create jR table
+    jR_cols=["V%i"%i for i in range(1,8)]+\
+             ["R%i"%i for i in range(1,8)]+\
+              ["Rm%i"%i for i in range(1,8)]
+    jR_sql_create_table=' real, '.join(jR_cols)+' real'
+    c.execute('drop table if exists jR;')
+    c.execute('create table jR(jID int primary key, {0});'\
+              .format(jR_sql_create_table))
     db.commit()
     return db,c
 
@@ -77,15 +86,21 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
                't0','m','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
                'Frac_Lat','ip','lr']
     mat_sql_fill_table=','.join(materials)
-    
-    for name,ID in jobs.items():
+    barlength=60
+    njobs=len(jobs)
+    i=0
+    printed=0
+    for name,ID in tqdm(jobs.items()):
+#    for name,ID in jobs.items():
         #insert_PV:
         XPV=read_PV_result(rootf+'/'+resultsf+'/'+name+'_PV.csv')
         columns=['jID']+list(XPV.columns)
         c.executemany('INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
                 .format(ID,',?'*15),XPV.as_matrix())
         #insert_facts:
-        dictio=read_facts(name,rootf=rootf)
+        with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
+            jobinp=jobfile.read()[15982640:]
+        dictio=read_facts(name,jobinp=jobinp,rootf=rootf)
         columns=['jID']+list(dictio.keys())
         c.execute(\
             'INSERT INTO jFacts({2}) VALUES ({0}{1});'\
@@ -158,12 +173,18 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         prev_beat=XPV[XPV['X']>=sec_computed-2]
         prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
         h_pars['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
-        
         columns=['jID']+list(h_pars.keys())
         c.execute(\
             'INSERT INTO jHem({2}) VALUES ({0}{1});'\
             .format(ID,',?'*len(h_pars),','.join(columns)),\
             tuple(h_pars.values()))
+        # insert Rs
+        Rs=readR(jobinp=jobinp)
+        columns=['jID']+list(Rs.keys())
+        c.execute(\
+            'INSERT INTO jR({2}) VALUES ({0}{1});'\
+            .format(ID,',?'*len(Rs),','.join(columns)),\
+            tuple(Rs.values()))
 
 def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
     fullpath=rootf+'/'+name+'/'+matfile
@@ -214,7 +235,7 @@ def read_PV_result(file):
     clean=result.drop_duplicates('X')
     return clean
 
-def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
+def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     # Read start and end times from log file
     dates=[]
     errors=[]
@@ -259,12 +280,9 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
         errors.append(err_sta)
     # Read from job file, inp
     try:
-        with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
-            raw=jobfile.read()
-        raw=raw[15982640:]
-        raw=raw.split('** STEP: ')
-        pre_steps=raw[0]
-        steps=raw[1:]
+        jobinp=jobinp.split('** STEP: ')
+        pre_steps=jobinp[0]
+        steps=jobinp[1:]
         # Read pre-load step
         prel_dur=steps[0].find('*Dynamic, Explicit')
         prel_dur=steps[0][prel_dur:].splitlines()
@@ -277,11 +295,47 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
             'machine':machine,'cores':cores,'sec_computed':sec_computed,\
             'steps':len(steps),'prel_duration':prel_dur}
 
+def readR(jobinp):
+    A=np.array([441.15,1722.2,434.9,434.9,1039.8,441.15,441.15])
+    #from 0 to 7, se we can work using from 1 to 7, usual convention:
+    V=np.zeros(8)
+    ro=1.027e-9
+    inplines=jobinp.splitlines()
+    for i,line in enumerate(inplines):
+        line=line.strip()
+        if '*Fluid Exchange Property, name=Link-Aortic-V' in line:
+            V[6]=float(inplines[i+1].split(',')[0])
+        elif '*Fluid Exchange Property, name=Link-Body-R' in line:
+            V[7]=float(inplines[i+1].split(',')[0])
+        elif '*Fluid Exchange Property, name=Link-Mitral' in line:
+            V[5]=float(inplines[i+1].split(',')[0])
+        elif '*Fluid Exchange Property, name=Link-Pulmonary-R' in line:
+            V[4]=float(inplines[i+1].split(',')[0])
+        elif '*Fluid Exchange Property, name=Link-Pulmonary-V' in line:
+            V[3]=float(inplines[i+1].split(',')[0])
+        elif '*Fluid Exchange Property, name=Link-Tricuspid-V' in line:
+            V[2]=float(inplines[i+1].split(',')[0])
+        elif '*Fluid Exchange Property, name=Link-Venous-R' in line:
+            V[1]=float(inplines[i+1].split(',')[0])
+        if sum(V==0)==1:
+            break
+    V=V[1:]
+    V_base=np.array([429.5,429.5,423.47,1751.03,2359.04,536.,59965.5])
+    R=ro*V/A
+    # On the next line we are making the assumption that the A hasn't been modified
+    Rm=V/V_base
+    Vdict={"V%i"%i:val for i,val in enumerate(V,start=1)}
+    Rdict={"R%i"%i:val for i,val in enumerate(R,start=1)}
+    Rmdict={"Rm%i"%i:val for i,val in enumerate(Rm,start=1)}
+    Rdict.update(Vdict)
+    Rdict.update(Rmdict)
+    return Rdict
+
 #if __name__ == "__main__":
 if True:
     rootf='D:/users/eta2/hCxBvf'
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemo-fast.db',rootf=rootf)
+    db,c=create_DB('dbPVhashhemoRs-fast.db',rootf=rootf)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
