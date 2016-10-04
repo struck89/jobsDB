@@ -102,17 +102,8 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
             sql_command='INSERT INTO {0}(jID,{1}) VALUES ({2}{3});'\
                 .format(t_name,mat_sql_fill_table,ID,',?'*len(mat_params))
             c.execute(sql_command,mat_params)
-        #insert hem params
-#        h_params=compute_hem_params(c,ID)
-#        c.execute('''SELECT X-sec_computed+1 as t, P1, P2, P3, P4, P5, P6, P7,
-#                                           V1, V2, V3, V4, V5, V6, V7
-#             FROM jFacts, jPV
-#             WHERE jFacts.jID=jPV.jID AND jPV.jID=?
-#             AND t>=0
-#             ORDER BY X''',(str(ID),))
-#        tPV=pd.DataFrame(c.fetchall(),columns=columns)
-        ##### we have to slice XPV for the last beat and also for the previous
-            ### one. then replace shit!!
+        # insert hem params
+        # we have to slice XPV for the last beat and also for the previous one
         sec_computed=dictio['sec_computed']
         tPV=XPV[XPV['X']>=sec_computed-1]
         t=tPV['X']-sec_computed+1
@@ -164,14 +155,6 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         h_pars['MIN_LV_V']=0.001*tPV[LV_V].min()
         h_pars['MIN_RV_V']=0.001*tPV[RV_V].min()
         #LV P Converged?
-#        c.execute('''SELECT X-sec_computed+1 as t, P6
-#                 FROM jFacts, jPV
-#                 WHERE jFacts.jID=jPV.jID AND jPV.jID=?
-#                 AND t>=-1
-#                 AND t<=0
-#                 ORDER BY X''',(str(ID),))
-#        columns=['X','LV_P']
-#        prev_beat=pd.DataFrame(c.fetchall(),columns=columns)
         prev_beat=XPV[XPV['X']>=sec_computed-2]
         prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
         h_pars['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
@@ -181,100 +164,6 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
             'INSERT INTO jHem({2}) VALUES ({0}{1});'\
             .format(ID,',?'*len(h_pars),','.join(columns)),\
             tuple(h_pars.values()))
-        
-    
-#def insert_PV(c,resultsf='results',rootf='D:/users/eta2/hCxBvf'):
-#    c.execute('drop table if exists jPV;')
-#    c.execute('''create table jPV(jID int, X real,
-#              P1 real, P2 real, P3 real, P4 real, P5 real, P6 real, P7 real,
-#              V1 real, V2 real, V3 real, V4 real, V5 real, V6 real, V7 real
-#              );''')
-#    c.execute('SELECT jID, jName FROM jData;')
-#    jobs_in_jData=c.fetchall()
-#    jobs={name:ID for (ID,name) in jobs_in_jData}
-#    for name,ID in jobs.items():
-#        try:
-#            data=read_PV_result(rootf+'/'+resultsf+'/'+name+'_PV.csv')
-#            columns=['jID']+list(data.columns)
-#            c.executemany(\
-#              'INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
-#                .format(ID,',?'*15),data.as_matrix())
-#        except Exception as err:
-#            print(str(err))
-#            print('Error when processing job {0} with ID {1}'.format(name,ID))
-#            print('We keep working anyway\n{0}'.format('_'*79))
-
-#def insert_facts(c,rootf='D:/users/eta2/hCxBvf'):
-##    c.execute('drop table if exists jFacts;')
-##    c.execute('''create table jFacts(jID int primary key, duration real, 
-##                 duration2 text, start text, end text, machine text, cores int, 
-##                 steps int, prel_duration real, sec_computed real
-##              );''')
-#    c.execute('SELECT jID, jName FROM jData;')
-#    jobs_in_jData=c.fetchall()
-#    jobs={name:ID for (ID,name) in jobs_in_jData}
-#    for name,ID in jobs.items():
-#        try:
-#            dictio=read_facts(name,rootf=rootf)
-#            columns=['jID']+list(dictio.keys())
-#            c.execute(\
-#                'INSERT INTO jFacts({2}) VALUES ({0}{1});'\
-#                .format(ID,',?'*len(dictio),','.join(columns)),\
-#                tuple(dictio.values()))
-#        except Exception as err:
-#            print(str(err))
-#            print('Error when processing job {0} with ID {1}'.format(name,ID))
-#            print('We keep working anyways\n{0}'.format('_'*79))
-#
-#def insert_materials(c,rootf='D:/users/eta2/hCxBvf'):
-##    materials=['a','b','af','bf','a_s','bs','afs','bfs','D',\
-##               't0','m','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
-##               'Frac_Lat','ip','lr']
-##    sql_create_table=' real, '.join(materials)+' real'
-##    sql_fill_table=','.join(materials)
-##    parts=['RA','RV','LA','LV','PA']
-##    matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
-##    matfiles['PA']='mech-mat-PASSIVE.inp'
-##    for part in parts:
-##        table_name='j'+part
-##        c.execute('drop table if exists %s;'%table_name)
-##        c.execute('create table {0}(jID int primary key, {1});'\
-##                  .format(table_name,sql_create_table))
-#    c.execute('SELECT jID, jName FROM jData;')
-#    jobs_in_jData=c.fetchall()
-#    jobs={name:ID for (ID,name) in jobs_in_jData}
-#    for name,ID in jobs.items():
-#        lr_dict=read_lr(name,rootf)
-#        for part, matfile in matfiles.items():
-#            try:
-#                t_name='j'+part
-#                mat_params=read_mat(name,matfile,rootf)+[lr_dict.pop(part,None)]
-#                sql_command='INSERT INTO {0}(jID,{1}) VALUES ({2}{3});'\
-#                    .format(t_name,sql_fill_table,ID,',?'*len(mat_params))
-#                c.execute(sql_command,mat_params)
-#            except Exception as err:
-#                print(err)
-#                print('Error when working with {0} on job {1}:{2}'.format(\
-#                      part,ID,name))
-
-#def insert_hemodynamic_params(c):
-##    hemod_params=['SBP','DBP','MAP','MAPi','RVSP','RVDP','PASP','PADP','MPAP',\
-##           'MPAPi','RAP','CVP','LAP','PAOP','SV','RVSV','CO','SVR','PVR',\
-##           'LVSW','RVSW','EF','RVEF','MAX_LV_P','MAX_RV_P','MAX_LV_V',\
-##           'MAX_RV_V','MIN_LV_P','MIN_RV_P','MIN_LV_V','MIN_RV_V','LV_P_CONV']
-##    sql_create_table=' real, '.join(hemod_params)+' real'
-##    c.execute('drop table if exists jHem;')
-##    c.execute('create table jHem(jID int primary key, {0});'\
-##              .format(sql_create_table))
-#    c.execute('SELECT jID FROM jData;')
-#    jobs_IDs=c.fetchall()
-#    for (ID,) in jobs_IDs:
-#        h_params=compute_hem_params(c,ID)
-#        columns=['jID']+list(h_params.keys())
-#        c.execute(\
-#            'INSERT INTO jHem({2}) VALUES ({0}{1});'\
-#            .format(ID,',?'*len(h_params),','.join(columns)),\
-#            tuple(h_params.values()))
 
 def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
     fullpath=rootf+'/'+name+'/'+matfile
@@ -368,11 +257,11 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
     except Exception as err_sta:
         print(err_sta)
         errors.append(err_sta)
-    
     # Read from job file, inp
     try:
         with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
             raw=jobfile.read()
+        raw=raw[15982640:]
         raw=raw.split('** STEP: ')
         pre_steps=raw[0]
         steps=raw[1:]
@@ -383,85 +272,14 @@ def read_facts(name,rootf='D:/users/eta2/hCxBvf'):
     except Exception as err_inp:
         print(err_inp)
         errors.append(err_inp)
-    
     return {'start':str(dates[0]),'end':str(dates[-1]),\
             'duration':duration,'duration2':duration2,\
             'machine':machine,'cores':cores,'sec_computed':sec_computed,\
             'steps':len(steps),'prel_duration':prel_dur}
 
-#def compute_hem_params(c,ID):
-#    c.execute('''SELECT X-sec_computed+1 as t, P1, P2, P3, P4, P5, P6, P7,
-#                                           V1, V2, V3, V4, V5, V6, V7
-#             FROM jFacts, jPV
-#             WHERE jFacts.jID=jPV.jID AND jPV.jID=?
-#             AND t>=0
-#             ORDER BY X''',(str(ID),))
-#    chambers=['VEN','RA','RV','PUL','LA','LV','ART']
-#    p_chambers=[part+'_P' for part in chambers]
-#    v_chambers=[part+'_V' for part in chambers]
-#    columns=['X']+p_chambers+v_chambers
-#    tPV=pd.DataFrame(c.fetchall(),columns=columns)
-#    t=tPV['X']
-#    # h_pars === hemodynamic parameters ; cf=== conversion factor
-#    h_pars={}
-#    cf=7500
-#    #Systolic and diastolic blood pressure (arterial)
-#    h_pars['SBP']=7500*tPV['ART_P'].max()
-#    h_pars['DBP']=7500*tPV['ART_P'].min()
-#    # Mean arterial pressure, lab formula and real integrated formula
-#    h_pars['MAP']=(h_pars['SBP']+2*h_pars['DBP'])/3
-#    h_pars['MAPi']=7500*np.trapz(tPV['ART_P'],t)/(t.max()-t.min())
-#    #Systolic and diastolic RV pressure
-#    h_pars['RVSP']=7500*tPV['RV_P'].max()
-#    h_pars['RVDP']=7500*tPV['RV_P'].min()
-#    #Systolic, diastolic, and mean pulmonary arterial pressure (and integrated)
-#    h_pars['PASP']=7500*tPV['PUL_P'].max()
-#    h_pars['PADP']=7500*tPV['PUL_P'].min()
-#    h_pars['MPAP']=(h_pars['PASP']+2*h_pars['PADP'])/3
-#    h_pars['MPAPi']=7500*np.trapz(tPV['PUL_P'],t)/(t.max()-t.min())
-#    #Mean right and left atrial and venous pressure
-#    h_pars['RAP']=7500*np.trapz(tPV['RA_P'],t)/(t.max()-t.min())
-#    h_pars['CVP']=7500*np.trapz(tPV['VEN_P'],t)/(t.max()-t.min())
-#    h_pars['LAP']=7500*np.trapz(tPV['LA_P'],t)/(t.max()-t.min())
-#    h_pars['PAOP']=h_pars['LAP']
-#    #Cardiac output and Stroke volume
-#    HR=60 #This will have to be a function of each beat in the future
-#    h_pars['SV']=0.001*(tPV['LV_V'].max()-tPV['LV_V'].min())
-#    h_pars['RVSV']=0.001*(tPV['RV_V'].max()-tPV['RV_V'].min())
-#    h_pars['CO']=HR*h_pars['SV']/1000
-#    #Systemic and pulmonary Vascular Resistance
-#    h_pars['SVR']=80*(h_pars['MAP']-h_pars['RAP'])/h_pars['CO']
-#    h_pars['PVR']=80*(h_pars['MPAP']-h_pars['PAOP'])/h_pars['CO']
-#    #Stroke work
-#    h_pars['LVSW']=np.trapz(tPV['LV_P'],tPV['LV_V'])
-#    h_pars['RVSW']=np.trapz(tPV['RV_P'],tPV['RV_V'])
-#    #Ejection Fraction
-#    h_pars['EF']=100*h_pars['SV']/(0.001*tPV['LV_V'].max())
-#    h_pars['RVEF']=100*h_pars['RVSV']/(0.001*tPV['RV_V'].max())
-#    #Other interesting params:
-#    h_pars['MAX_LV_P']=7500*tPV['LV_P'].max()
-#    h_pars['MAX_RV_P']=7500*tPV['RV_P'].max()
-#    h_pars['MAX_LV_V']=0.001*tPV['LV_V'].max()
-#    h_pars['MAX_RV_V']=0.001*tPV['RV_V'].max()
-#    h_pars['MIN_LV_P']=7500*tPV['LV_P'].min()
-#    h_pars['MIN_RV_P']=7500*tPV['RV_P'].min()
-#    h_pars['MIN_LV_V']=0.001*tPV['LV_V'].min()
-#    h_pars['MIN_RV_V']=0.001*tPV['RV_V'].min()
-#    #LV P Converged?
-#    c.execute('''SELECT X-sec_computed+1 as t, P6
-#             FROM jFacts, jPV
-#             WHERE jFacts.jID=jPV.jID AND jPV.jID=?
-#             AND t>=-1
-#             AND t<=0
-#             ORDER BY X''',(str(ID),))
-#    columns=['X','LV_P']
-#    prev_beat=pd.DataFrame(c.fetchall(),columns=columns)
-#    h_pars['LV_P_CONV']=100*(tPV['LV_P'].max()-prev_beat['LV_P'].max())/prev_beat['LV_P'].max()
-#    return h_pars
-
 #if __name__ == "__main__":
 if True:
-    rootf='C:/Users/Enric/Documents/hCxBvf'
+    rootf='D:/users/eta2/hCxBvf'
     step0=time.clock()
     db,c=create_DB('dbPVhashhemo-fast.db',rootf=rootf)
     step1=time.clock()
@@ -474,26 +292,8 @@ if True:
     fill_DB(c,rootf=rootf,resultsf='results')
     db.commit()
     step2=time.clock()
-    print('%.4g'%(step2-step1)+'s to insert PV')
-#    
-#    step1=time.clock()
-#    insert_facts(c,rootf=rootf)
-#    db.commit()
-#    step2=time.clock()
-#    print('%.4g'%(step2-step1)+'s to insert Facts')
-#    
-#    step1=time.clock()
-#    insert_materials(c,rootf=rootf)
-#    db.commit()
-#    step2=time.clock()
-#    print('%.4g'%(step2-step1)+'s to insert Materials')
-#    
-#    step1=time.clock()
-#    insert_hemodynamic_params(c)
-#    db.commit()
-#    step2=time.clock()
-#    print('%.4g'%(step2-step1)+'s to compute and insert the hemodynamic parameters')
-#    
+    print('%.4g'%(step2-step1)+'s to fill DB')
+
     db.close()
     
     print('%.4g'%(step2-step0)+'s Total')
