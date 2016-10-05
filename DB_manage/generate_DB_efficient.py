@@ -12,7 +12,7 @@ import numpy as np
 import time
 from datetime import datetime
 from hashlib import md5
-from tqdm import *
+from tqdm import tqdm
 
 def hashstr(name):
     return md5(name.lower().encode()).hexdigest()[-6:].upper()
@@ -21,7 +21,10 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     db=sql.connect(rootf+'/'+db_file)
     c=db.cursor()
     c.execute('drop table if exists jData;')
-    c.execute('create table jData(jID int primary key, jName text, jHash text);')
+    c.execute('''create table jData(jID int primary key, jName text, jHash text, 
+                 duration real, duration2 text, start text, end text, 
+                 machine text, cores int, steps int, prel_duration real,
+                 sec_computed real);''')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -39,12 +42,6 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('''create table jPV(jID int, X real,
               P1 real, P2 real, P3 real, P4 real, P5 real, P6 real, P7 real,
               V1 real, V2 real, V3 real, V4 real, V5 real, V6 real, V7 real
-              );''')
-    #create jFacts table
-    c.execute('drop table if exists jFacts;')
-    c.execute('''create table jFacts(jID int primary key, duration real, 
-                 duration2 text, start text, end text, machine text, cores int, 
-                 steps int, prel_duration real, sec_computed real
               );''')
     #create five material tables
     materials=['a','b','af','bf','a_s','bs','afs','bfs','D',\
@@ -67,9 +64,9 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('create table jHem(jID int primary key, {0});'\
               .format(hem_sql_create_table))
     #create jR table
-    jR_cols=["V%i"%i for i in range(1,8)]+\
-             ["R%i"%i for i in range(1,8)]+\
-              ["Rm%i"%i for i in range(1,8)]
+    jR_cols=["Rm%i"%i for i in range(1,8)]+\
+             ["V%i"%i for i in range(1,8)]+\
+              ["R%i"%i for i in range(1,8)]
     jR_sql_create_table=' real, '.join(jR_cols)+' real'
     c.execute('drop table if exists jR;')
     c.execute('create table jR(jID int primary key, {0});'\
@@ -86,10 +83,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
                't0','m','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
                'Frac_Lat','ip','lr']
     mat_sql_fill_table=','.join(materials)
-    barlength=60
-    njobs=len(jobs)
-    i=0
-    printed=0
+    
     for name,ID in tqdm(jobs.items()):
 #    for name,ID in jobs.items():
         #insert_PV:
@@ -101,11 +95,9 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
             jobinp=jobfile.read()[15982640:]
         dictio=read_facts(name,jobinp=jobinp,rootf=rootf)
-        columns=['jID']+list(dictio.keys())
-        c.execute(\
-            'INSERT INTO jFacts({2}) VALUES ({0}{1});'\
-            .format(ID,',?'*len(dictio),','.join(columns)),\
-            tuple(dictio.values()))
+        sql_update_set=['%s=?'%key for key in dictio.keys()]
+        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
+            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
         #insert materials:
         parts=['RA','RV','LA','LV','PA']
         matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
