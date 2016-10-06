@@ -24,7 +24,9 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('''create table jData(jID int primary key, jName text, jHash text, 
                  duration real, duration2 text, start text, end text, 
                  machine text, cores int, steps int, prel_duration real,
-                 sec_computed real);''')
+                 sec_computed real, 
+                 C1 real, C2 real, C3 real, C4 real, C5 real, C6 real, C7 real,
+                 CT real);''')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -91,13 +93,13 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         columns=['jID']+list(XPV.columns)
         c.executemany('INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
                 .format(ID,',?'*15),XPV.as_matrix())
-        #insert_facts:
+        # get miscellanous data, it will be inserted later:
         with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
             jobinp=jobfile.read()[15982640:]
         dictio=read_facts(name,jobinp=jobinp,rootf=rootf)
-        sql_update_set=['%s=?'%key for key in dictio.keys()]
-        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
-            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
+#        sql_update_set=['%s=?'%key for key in dictio.keys()]
+#        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
+#            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
         #insert materials:
         parts=['RA','RV','LA','LV','PA']
         matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
@@ -112,8 +114,8 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         # insert hem params
         # we have to slice XPV for the last beat and also for the previous one
         sec_computed=dictio['sec_computed']
-        tPV=XPV[XPV['X']>=sec_computed-1]
-        t=tPV['X']-sec_computed+1
+        tPV=XPV[XPV.X>=sec_computed-1]
+        t=tPV.X-sec_computed+1
         VEN_P,RA_P,RV_P,PUL_P,LA_P,LV_P,ART_P='P1','P2','P3','P4','P5','P6','P7'
         VEN_V,RA_V,RV_V,PUL_V,LA_V,LV_V,ART_V='V1','V2','V3','V4','V5','V6','V7'
         # h_pars === hemodynamic parameters ; cf=== conversion factor
@@ -161,8 +163,8 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         h_pars['MIN_LV_V']=tPV[LV_V].min()
         h_pars['MIN_RV_V']=tPV[RV_V].min()
         #LV P Converged?
-        prev_beat=XPV[XPV['X']>=sec_computed-2]
-        prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
+        prev_beat=XPV[(XPV.X>=sec_computed-2) & (XPV.X<=sec_computed-1)]
+#        prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
         h_pars['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
         columns=['jID']+list(h_pars.keys())
         c.execute(\
@@ -176,6 +178,20 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
             'INSERT INTO jR({2}) VALUES ({0}{1});'\
             .format(ID,',?'*len(Rs),','.join(columns)),\
             tuple(Rs.values()))
+        # compute convergence as distance between start and end in PVloop of last beat
+        P=tPV.loc[:,'P1':'P7']
+        V=tPV.loc[:,'V1':'V7']
+        P_scal=(P-P.min())/(P.max()-P.min())
+        V_scal=(V-V.min())/(V.max()-V.min())
+        conv_array=(P_scal.iloc[-1]-P_scal.iloc[0]).values**2 + (V_scal.iloc[-1]-V_scal.iloc[0]).values**2
+        cdict={"C%i"%(i+1) : val for i,val in enumerate(conv_array)}
+        cdict['CT']=conv_array.mean()
+        dictio.update(cdict)
+        sql_update_set=['%s=?'%key for key in dictio.keys()]
+        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
+            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
+        
+        
 
 def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
     fullpath=rootf+'/'+name+'/'+matfile
@@ -328,7 +344,7 @@ def readR(jobinp):
 if True:
     rootf='D:/users/eta2/hCxBvf'
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3.db',rootf=rootf)
+    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-new.db',rootf=rootf)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
