@@ -118,49 +118,48 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         VEN_V,RA_V,RV_V,PUL_V,LA_V,LV_V,ART_V='V1','V2','V3','V4','V5','V6','V7'
         # h_pars === hemodynamic parameters ; cf=== conversion factor
         h_pars={}
-        cf=7500
         #Systolic and diastolic blood pressure (arterial)
-        h_pars['SBP']=7500*tPV[ART_P].max()
-        h_pars['DBP']=7500*tPV[ART_P].min()
+        h_pars['SBP']=tPV[ART_P].max()
+        h_pars['DBP']=tPV[ART_P].min()
         # Mean arterial pressure, lab formula and real integrated formula
         h_pars['MAP']=(h_pars['SBP']+2*h_pars['DBP'])/3
-        h_pars['MAPi']=7500*np.trapz(tPV[ART_P],t)/(t.max()-t.min())
+        h_pars['MAPi']=np.trapz(tPV[ART_P],t)/(t.max()-t.min())
         #Systolic and diastolic RV pressure
-        h_pars['RVSP']=7500*tPV[RV_P].max()
-        h_pars['RVDP']=7500*tPV[RV_P].min()
+        h_pars['RVSP']=tPV[RV_P].max()
+        h_pars['RVDP']=tPV[RV_P].min()
         #Systolic, diastolic, and mean pulmonary arterial pressure (and integrated)
-        h_pars['PASP']=7500*tPV[PUL_P].max()
-        h_pars['PADP']=7500*tPV[PUL_P].min()
+        h_pars['PASP']=tPV[PUL_P].max()
+        h_pars['PADP']=tPV[PUL_P].min()
         h_pars['MPAP']=(h_pars['PASP']+2*h_pars['PADP'])/3
-        h_pars['MPAPi']=7500*np.trapz(tPV[PUL_P],t)/(t.max()-t.min())
+        h_pars['MPAPi']=np.trapz(tPV[PUL_P],t)/(t.max()-t.min())
         #Mean right and left atrial and venous pressure
-        h_pars['RAP']=7500*np.trapz(tPV[RA_P],t)/(t.max()-t.min())
-        h_pars['CVP']=7500*np.trapz(tPV[VEN_P],t)/(t.max()-t.min())
-        h_pars['LAP']=7500*np.trapz(tPV[LA_P],t)/(t.max()-t.min())
+        h_pars['RAP']=np.trapz(tPV[RA_P],t)/(t.max()-t.min())
+        h_pars['CVP']=np.trapz(tPV[VEN_P],t)/(t.max()-t.min())
+        h_pars['LAP']=np.trapz(tPV[LA_P],t)/(t.max()-t.min())
         h_pars['PAOP']=h_pars['LAP']
         #Cardiac output and Stroke volume
         HR=60 #This will have to be a function of each beat in the future
-        h_pars['SV']=0.001*(tPV[LV_V].max()-tPV[LV_V].min())
-        h_pars['RVSV']=0.001*(tPV[RV_V].max()-tPV[RV_V].min())
+        h_pars['SV']=(tPV[LV_V].max()-tPV[LV_V].min())
+        h_pars['RVSV']=(tPV[RV_V].max()-tPV[RV_V].min())
         h_pars['CO']=HR*h_pars['SV']/1000
         #Systemic and pulmonary Vascular Resistance
         h_pars['SVR']=80*(h_pars['MAP']-h_pars['RAP'])/h_pars['CO']
         h_pars['PVR']=80*(h_pars['MPAP']-h_pars['PAOP'])/h_pars['CO']
         #Stroke work
-        h_pars['LVSW']=np.trapz(tPV[LV_P],tPV[LV_V])
-        h_pars['RVSW']=np.trapz(tPV[RV_P],tPV[RV_V])
+        h_pars['LVSW']=np.trapz(tPV[LV_P],tPV[LV_V])*0.133322
+        h_pars['RVSW']=np.trapz(tPV[RV_P],tPV[RV_V])*0.133322
         #Ejection Fraction
-        h_pars['EF']=100*h_pars['SV']/(0.001*tPV[LV_V].max())
-        h_pars['RVEF']=100*h_pars['RVSV']/(0.001*tPV[RV_V].max())
+        h_pars['EF']=100*h_pars['SV']/(tPV[LV_V].max())
+        h_pars['RVEF']=100*h_pars['RVSV']/(tPV[RV_V].max())
         #Other interesting params:
-        h_pars['MAX_LV_P']=7500*tPV[LV_P].max()
-        h_pars['MAX_RV_P']=7500*tPV[RV_P].max()
-        h_pars['MAX_LV_V']=0.001*tPV[LV_V].max()
-        h_pars['MAX_RV_V']=0.001*tPV[RV_V].max()
-        h_pars['MIN_LV_P']=7500*tPV[LV_P].min()
-        h_pars['MIN_RV_P']=7500*tPV[RV_P].min()
-        h_pars['MIN_LV_V']=0.001*tPV[LV_V].min()
-        h_pars['MIN_RV_V']=0.001*tPV[RV_V].min()
+        h_pars['MAX_LV_P']=tPV[LV_P].max()
+        h_pars['MAX_RV_P']=tPV[RV_P].max()
+        h_pars['MAX_LV_V']=tPV[LV_V].max()
+        h_pars['MAX_RV_V']=tPV[RV_V].max()
+        h_pars['MIN_LV_P']=tPV[LV_P].min()
+        h_pars['MIN_RV_P']=tPV[RV_P].min()
+        h_pars['MIN_LV_V']=tPV[LV_V].min()
+        h_pars['MIN_RV_V']=tPV[RV_V].min()
         #LV P Converged?
         prev_beat=XPV[XPV['X']>=sec_computed-2]
         prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
@@ -225,7 +224,9 @@ def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
 def read_PV_result(file):
     result=pd.read_csv(file)
     clean=result.drop_duplicates('X')
-    return clean
+    P=clean[['P1','P2','P3','P4','P5','P6','P7']].values*7500
+    V=clean[['V1','V2','V3','V4','V5','V6','V7']].values*0.001
+    return pd.DataFrame(np.c_[clean['X'].values,P,V],columns=clean.columns)
 
 def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     # Read start and end times from log file
@@ -248,7 +249,7 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     # Read machine from .dat file
     try:
         with open(rootf+'/'+name+'/'+name+'.dat','r') as datfile:
-            raw=datfile.read(1000)
+            raw=datfile.read(1024)
         raw=raw.split(' machine ')
         raw=raw[1].splitlines()
         machine=raw[0].strip()
@@ -327,7 +328,7 @@ def readR(jobinp):
 if True:
     rootf='D:/users/eta2/hCxBvf'
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemoRs-fast.db',rootf=rootf)
+    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3.db',rootf=rootf)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
