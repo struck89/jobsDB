@@ -24,9 +24,7 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('''create table jData(jID int primary key, jName text, jHash text, 
                  duration real, duration2 text, start text, end text, 
                  machine text, cores int, steps int, prel_duration real,
-                 sec_computed real, 
-                 C1 real, C2 real, C3 real, C4 real, C5 real, C6 real, C7 real,
-                 CT real);''')
+                 sec_computed real);''')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -73,6 +71,9 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('drop table if exists jR;')
     c.execute('create table jR(jID int primary key, {0});'\
               .format(jR_sql_create_table))
+    c.execute('drop table if exists jConv;')
+    c.execute('''create table jConv(jID int primary key, C1 real, C2 real, 
+                 C3 real, C4 real, C5 real, C6 real, C7 real, CT real);''')
     db.commit()
     return db,c
 
@@ -93,13 +94,13 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         columns=['jID']+list(XPV.columns)
         c.executemany('INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
                 .format(ID,',?'*15),XPV.as_matrix())
-        # get miscellanous data, it will be inserted later:
+        # get miscellanous data
         with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
             jobinp=jobfile.read()[15982640:]
         dictio=read_facts(name,jobinp=jobinp,rootf=rootf)
-#        sql_update_set=['%s=?'%key for key in dictio.keys()]
-#        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
-#            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
+        sql_update_set=['%s=?'%key for key in dictio.keys()]
+        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
+            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
         #insert materials:
         parts=['RA','RV','LA','LV','PA']
         matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
@@ -184,12 +185,23 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         P_scal=(P-P.min())/(P.max()-P.min())
         V_scal=(V-V.min())/(V.max()-V.min())
         conv_array=(P_scal.iloc[-1]-P_scal.iloc[0]).values**2 + (V_scal.iloc[-1]-V_scal.iloc[0]).values**2
+        conv_array=np.sqrt(conv_array)
         cdict={"C%i"%(i+1) : val for i,val in enumerate(conv_array)}
         cdict['CT']=conv_array.mean()
-        dictio.update(cdict)
-        sql_update_set=['%s=?'%key for key in dictio.keys()]
-        c.execute('UPDATE jData SET {1} WHERE jID={0};'\
-            .format(ID,','.join(sql_update_set)),tuple(dictio.values()))
+        sql_update_set=['%s=?'%key for key in cdict.keys()]
+        c.execute('UPDATE jConv SET {1} WHERE jID={0};'\
+            .format(ID,','.join(sql_update_set)),tuple(cdict.values()))
+        # time to implement squared difference error
+        # changing the index allows us to substract the values later on
+        P_pre=prev_beat.loc[:,'P1':'P7'].set_index(P.index)
+        V_pre=prev_beat.loc[:,'V1':'V7'].set_index(V.index)
+        P_sqerr=((P-P_pre)**2).sum()
+        P_sqerr_alt=((P.values-P_pre.values)**2).sum(axis=0)
+#        print(P_sqerr_alt)
+#        print(P_sqerr)
+#        print(ID)
+#        if ID!=52:
+#            raise KeyboardInterrupt
         
         
 
@@ -237,12 +249,12 @@ def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
               .format(str(list(lr_dict.keys())),name))
     return lr_dict
 
-def read_PV_result(file):
+def read_PV_result3(file):
     result=pd.read_csv(file)
     clean=result.drop_duplicates('X')
-    P=clean[['P1','P2','P3','P4','P5','P6','P7']].values*7500
-    V=clean[['V1','V2','V3','V4','V5','V6','V7']].values*0.001
-    return pd.DataFrame(np.c_[clean['X'].values,P,V],columns=clean.columns)
+    P=clean.loc[:,'P1':'P7'].values*7500
+    V=clean.loc[:,'V1':'V7'].values*0.001
+    return pd.DataFrame(np.c_[clean.X.values,P,V],columns=clean.columns)
 
 def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     # Read start and end times from log file
@@ -352,7 +364,11 @@ if True:
     print('%i jobs in the database'%c.fetchall()[0][0])
     
     step1=time.clock()
-    fill_DB(c,rootf=rootf,resultsf='results')
+    try:
+        fill_DB(c,rootf=rootf,resultsf='results')
+    except BaseException as err:
+        db.close()
+        raise err
     db.commit()
     step2=time.clock()
     print('%.4g'%(step2-step1)+'s to fill DB')
