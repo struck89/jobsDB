@@ -73,7 +73,10 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
               .format(jR_sql_create_table))
     c.execute('drop table if exists jConv;')
     c.execute('''create table jConv(jID int primary key, C1 real, C2 real, 
-                 C3 real, C4 real, C5 real, C6 real, C7 real, CT real);''')
+                 C3 real, C4 real, C5 real, C6 real, C7 real, CT real, sqP1 real,
+                 sqP2 real, sqP3 real, sqP4 real, sqP5 real, sqP6 real, sqP7 real,
+                 sqV1 real, sqV2 real, sqV3 real, sqV4 real, sqV5 real, sqV6 real,
+                 sqV7 real);''')
     db.commit()
     return db,c
 
@@ -86,7 +89,8 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
                't0','m','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
                'Frac_Lat','ip','lr']
     mat_sql_fill_table=','.join(materials)
-    
+    #the following constant is meant to fix the problems that occur with float precision.
+    err_corr=1.0001
     for name,ID in tqdm(jobs.items()):
 #    for name,ID in jobs.items():
         #insert_PV:
@@ -115,7 +119,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         # insert hem params
         # we have to slice XPV for the last beat and also for the previous one
         sec_computed=dictio['sec_computed']
-        tPV=XPV[XPV.X>=sec_computed-1]
+        tPV=XPV[XPV.X>=sec_computed-1*err_corr]
         t=tPV.X-sec_computed+1
         VEN_P,RA_P,RV_P,PUL_P,LA_P,LV_P,ART_P='P1','P2','P3','P4','P5','P6','P7'
         VEN_V,RA_V,RV_V,PUL_V,LA_V,LV_V,ART_V='V1','V2','V3','V4','V5','V6','V7'
@@ -164,7 +168,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         h_pars['MIN_LV_V']=tPV[LV_V].min()
         h_pars['MIN_RV_V']=tPV[RV_V].min()
         #LV P Converged?
-        prev_beat=XPV[(XPV.X>=sec_computed-2) & (XPV.X<=sec_computed-1)]
+        prev_beat=XPV[(XPV.X>=sec_computed-2*err_corr) & (XPV.X<=sec_computed-1/err_corr)]
 #        prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
         h_pars['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
         columns=['jID']+list(h_pars.keys())
@@ -188,20 +192,25 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         conv_array=np.sqrt(conv_array)
         cdict={"C%i"%(i+1) : val for i,val in enumerate(conv_array)}
         cdict['CT']=conv_array.mean()
-        sql_update_set=['%s=?'%key for key in cdict.keys()]
-        c.execute('UPDATE jConv SET {1} WHERE jID={0};'\
-            .format(ID,','.join(sql_update_set)),tuple(cdict.values()))
-        # time to implement squared difference error
         # changing the index allows us to substract the values later on
         P_pre=prev_beat.loc[:,'P1':'P7'].set_index(P.index)
         V_pre=prev_beat.loc[:,'V1':'V7'].set_index(V.index)
         P_sqerr=((P-P_pre)**2).sum()
-        P_sqerr_alt=((P.values-P_pre.values)**2).sum(axis=0)
-#        print(P_sqerr_alt)
-#        print(P_sqerr)
-#        print(ID)
-#        if ID!=52:
-#            raise KeyboardInterrupt
+        V_sqerr=((V-V_pre)**2).sum()
+        sqPdict={"sqP%i"%(i+1) : val for i,val in enumerate(P_sqerr)}
+        sqVdict={"sqV%i"%(i+1) : val for i,val in enumerate(V_sqerr)}
+        cdict.update(sqPdict)
+        cdict.update(sqVdict)
+#        sql_update_set=['%s=?'%key for key in cdict.keys()]
+#        c.execute('UPDATE jConv SET {1} WHERE jID={0};'\
+#            .format(ID,','.join(sql_update_set)),tuple(cdict.values()))
+        columns=['jID']+list(cdict.keys())
+        c.execute(\
+            'INSERT INTO jConv({2}) VALUES ({0}{1});'\
+            .format(ID,',?'*len(cdict),','.join(columns)),\
+            tuple(cdict.values()))
+#        raise KeyboardInterrupt
+#        P_sqerr_alt=((P.values-P_pre.values)**2).sum(axis=0)
         
         
 
@@ -249,7 +258,7 @@ def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
               .format(str(list(lr_dict.keys())),name))
     return lr_dict
 
-def read_PV_result3(file):
+def read_PV_result(file):
     result=pd.read_csv(file)
     clean=result.drop_duplicates('X')
     P=clean.loc[:,'P1':'P7'].values*7500
@@ -356,7 +365,7 @@ def readR(jobinp):
 if True:
     rootf='D:/users/eta2/hCxBvf'
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-new.db',rootf=rootf)
+    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-sqerr.db',rootf=rootf)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
