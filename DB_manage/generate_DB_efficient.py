@@ -13,6 +13,7 @@ import time
 from datetime import datetime
 from hashlib import md5
 from tqdm import tqdm
+from generate_PV_mmHgml import gen_mmHgml
 
 def hashstr(name):
     return md5(name.lower().encode()).hexdigest()[-6:].upper()
@@ -24,7 +25,7 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('''create table jData(jID int primary key, jName text, jHash text, 
                  duration real, duration2 text, start text, end text, 
                  machine text, cores int, steps int, prel_duration real,
-                 sec_computed real);''')
+                 sec_computed real, description text);''')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
     ODBs_cand=os.listdir(rootf+'/'+ODBsf)
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
@@ -58,7 +59,8 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     hemod_params=['SBP','DBP','MAP','MAPi','RVSP','RVDP','PASP','PADP','MPAP',\
            'MPAPi','RAP','CVP','LAP','PAOP','SV','RVSV','CO','SVR','PVR',\
            'LVSW','RVSW','EF','RVEF','MAX_LV_P','MAX_RV_P','MAX_LV_V',\
-           'MAX_RV_V','MIN_LV_P','MIN_RV_P','MIN_LV_V','MIN_RV_V','LV_P_CONV']
+           'MAX_RV_V','MIN_LV_P','MIN_RV_P','MIN_LV_V','MIN_RV_V','LV_P_CONV',
+           'Total_Vol']
     hem_sql_create_table=' real, '.join(hemod_params)+' real'
     c.execute('drop table if exists jHem;')
     c.execute('create table jHem(jID int primary key, {0});'\
@@ -80,7 +82,7 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     db.commit()
     return db,c
 
-def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
+def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
     #loop job by job
     c.execute('SELECT jID, jName FROM jData;')
     jobs_in_jData=c.fetchall()
@@ -94,7 +96,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
     for name,ID in tqdm(jobs.items()):
 #    for name,ID in jobs.items():
         #insert_PV:
-        XPV=read_PV_result(rootf+'/'+resultsf+'/'+name+'_PV.csv')
+        XPV=read_PV_result(rootf+'/'+resultsf+'/'+name+'_mmHgml.csv')
         columns=['jID']+list(XPV.columns)
         c.executemany('INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
                 .format(ID,',?'*15),XPV.as_matrix())
@@ -171,6 +173,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results'):
         prev_beat=XPV[(XPV.X>=sec_computed-2*err_corr) & (XPV.X<=sec_computed-1/err_corr)]
 #        prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
         h_pars['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
+        h_pars['Total_Vol']=tPV.iloc[-1,-7:].sum()
         columns=['jID']+list(h_pars.keys())
         c.execute(\
             'INSERT INTO jHem({2}) VALUES ({0}{1});'\
@@ -261,14 +264,15 @@ def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
 def read_PV_result(file):
     result=pd.read_csv(file)
     clean=result.drop_duplicates('X')
-    P=clean.loc[:,'P1':'P7'].values*7500
-    V=clean.loc[:,'V1':'V7'].values*0.001
-    return pd.DataFrame(np.c_[clean.X.values,P,V],columns=clean.columns)
+    return clean
+#    P=clean.loc[:,'P1':'P7'].values*7500
+#    V=clean.loc[:,'V1':'V7'].values*0.001
+#    return pd.DataFrame(np.c_[clean.X.values,P,V],columns=clean.columns)
 
 def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     # Read start and end times from log file
     dates=[]
-    errors=[]
+    facts={}
     try:
         with open(rootf+'/'+name+'/'+name+'.log','r') as logfile:
             for line in logfile:
@@ -278,36 +282,36 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
                     dates.append(date)
                 except:
                     pass
+        facts['duration']=(dates[-1]-dates[0]).total_seconds()/3600
+        facts['start']=str(dates[0])
+        facts['end']=str(dates[-1])
     except Exception as err_log:
         print(err_log)
-        dates=[datetime.fromordinal(1)]*2
-        errors.append(err_log)
-    duration=(dates[-1]-dates[0]).total_seconds()/3600
+   
     # Read machine from .dat file
     try:
         with open(rootf+'/'+name+'/'+name+'.dat','r') as datfile:
             raw=datfile.read(1024)
         raw=raw.split(' machine ')
         raw=raw[1].splitlines()
-        machine=raw[0].strip()
+        facts['machine']=raw[0].strip()
     except Exception as err_dat:
         print(err_dat)
-        machine='error'
-        errors.append(err_dat)
+
     # Read a lotta things from .sta file
     try:
         with open(rootf+'/'+name+'/'+name+'.sta','r') as stafile:
             raw=stafile.read()
         raw=raw.split('Domain level parallelization will be used with ',1)
         raw=raw[1].split(' processors.',1)
-        cores=int(raw[0])
+        facts['cores']=int(raw[0])
         raw=raw[1].split('INSTANCE WITH CRITICAL ELEMENT:')
         last_line=raw[-2].split()
-        sec_computed=float(last_line[-7])
-        duration2=last_line[-6]
+        facts['sec_computed']=float(last_line[-7])
+        facts['duration2']=last_line[-6]
     except Exception as err_sta:
         print(err_sta)
-        errors.append(err_sta)
+
     # Read from job file, inp
     try:
         jobinp=jobinp.split('** STEP: ')
@@ -316,14 +320,20 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
         # Read pre-load step
         prel_dur=steps[0].find('*Dynamic, Explicit')
         prel_dur=steps[0][prel_dur:].splitlines()
-        prel_dur=float(prel_dur[1].split()[-1])
+        facts['steps']=len(steps)
+        facts['prel_duration']=float(prel_dur[1].split()[-1])
     except Exception as err_inp:
         print(err_inp)
-        errors.append(err_inp)
-    return {'start':str(dates[0]),'end':str(dates[-1]),\
-            'duration':duration,'duration2':duration2,\
-            'machine':machine,'cores':cores,'sec_computed':sec_computed,\
-            'steps':len(steps),'prel_duration':prel_dur}
+
+    # Read job description
+    try:
+        with open(rootf+'/'+name+'/'+'description.txt','r') as descrfile:
+            raw=descrfile.read()
+        facts['description']=raw.strip()
+    except Exception as err_inp:
+        pass
+    
+    return facts
 
 def readR(jobinp):
     A=np.array([441.15,1722.2,434.9,434.9,1039.8,441.15,441.15])
@@ -364,8 +374,9 @@ def readR(jobinp):
 #if __name__ == "__main__":
 if True:
     rootf='D:/users/eta2/hCxBvf'
+    gen_mmHgml(rootf=rootf)
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-sqerr.db',rootf=rootf)
+    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-sqerr-descr.db',rootf=rootf)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
@@ -374,7 +385,7 @@ if True:
     
     step1=time.clock()
     try:
-        fill_DB(c,rootf=rootf,resultsf='results')
+        fill_DB(c,rootf=rootf,resultsf='results_mmHgml')
     except BaseException as err:
         db.close()
         raise err
