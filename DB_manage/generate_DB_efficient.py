@@ -66,7 +66,7 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
     c.execute('create table jHem(jID int primary key, {0});'\
               .format(hem_sql_create_table))
     #create jR table
-    jR_cols=["Rm%i"%i for i in range(1,8)]+\
+    jR_cols=["R%im"%i for i in range(1,8)]+\
              ["V%i"%i for i in range(1,8)]+\
               ["R%i"%i for i in range(1,8)]
     jR_sql_create_table=' real, '.join(jR_cols)+' real'
@@ -78,7 +78,15 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
                  C3 real, C4 real, C5 real, C6 real, C7 real, CT real, sqP1 real,
                  sqP2 real, sqP3 real, sqP4 real, sqP5 real, sqP6 real, sqP7 real,
                  sqV1 real, sqV2 real, sqV3 real, sqV4 real, sqV5 real, sqV6 real,
-                 sqV7 real);''')
+                 sqV7 real, 
+                 dfPmax1 real, dfPmax2 real, dfPmax3 real, dfPmax4 real,
+                 dfPmax5 real, dfPmax6 real, dfPmax7 real,
+                 dfVmax1 real, dfVmax2 real, dfVmax3 real, dfVmax4 real,
+                 dfVmax5 real, dfVmax6 real, dfVmax7 real,
+                 dfPmin1 real, dfPmin2 real, dfPmin3 real, dfPmin4 real,
+                 dfPmin5 real, dfPmin6 real, dfPmin7 real,
+                 dfVmin1 real, dfVmin2 real, dfVmin3 real, dfVmin4 real,
+                 dfVmin5 real, dfVmin6 real, dfVmin7 real);''')
     db.commit()
     return db,c
 
@@ -202,8 +210,21 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
         V_sqerr=((V-V_pre)**2).sum()
         sqPdict={"sqP%i"%(i+1) : val for i,val in enumerate(P_sqerr)}
         sqVdict={"sqV%i"%(i+1) : val for i,val in enumerate(V_sqerr)}
+        dfPmax=P.max()-P_pre.max()
+        dfVmax=V.max()-V_pre.max()
+        dfPmin=P.min()-P_pre.min()
+        dfVmin=V.min()-V_pre.min()
+        dfPmaxdict={"dfPmax%i"%(i+1) : val for i,val in enumerate(dfPmax)}
+        dfVmaxdict={"dfVmax%i"%(i+1) : val for i,val in enumerate(dfVmax)}
+        dfPmindict={"dfPmin%i"%(i+1) : val for i,val in enumerate(dfPmin)}
+        dfVmindict={"dfVmin%i"%(i+1) : val for i,val in enumerate(dfVmin)}
         cdict.update(sqPdict)
         cdict.update(sqVdict)
+        cdict.update(dfPmaxdict)
+        cdict.update(dfVmaxdict)
+        cdict.update(dfPmindict)
+        cdict.update(dfVmindict)
+        
 #        sql_update_set=['%s=?'%key for key in cdict.keys()]
 #        c.execute('UPDATE jConv SET {1} WHERE jID={0};'\
 #            .format(ID,','.join(sql_update_set)),tuple(cdict.values()))
@@ -366,7 +387,7 @@ def readR(jobinp):
     Rm=V/V_base
     Vdict={"V%i"%i:val for i,val in enumerate(V,start=1)}
     Rdict={"R%i"%i:val for i,val in enumerate(R,start=1)}
-    Rmdict={"Rm%i"%i:val for i,val in enumerate(Rm,start=1)}
+    Rmdict={"R%im"%i:val for i,val in enumerate(Rm,start=1)}
     Rdict.update(Vdict)
     Rdict.update(Rmdict)
     return Rdict
