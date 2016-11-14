@@ -10,6 +10,7 @@ import sqlite3 as sql
 import pandas as pd
 import numpy as np
 import time
+import json
 from datetime import datetime
 from hashlib import md5
 from tqdm import tqdm
@@ -87,6 +88,9 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs'):
                  dfPmin5 real, dfPmin6 real, dfPmin7 real,
                  dfVmin1 real, dfVmin2 real, dfVmin3 real, dfVmin4 real,
                  dfVmin5 real, dfVmin6 real, dfVmin7 real);''')
+    c.execute('drop table if exists jC;')
+    c.execute('''create table jC(jID int primary key, VEN_K real, PUL_K real, 
+                 ART_K real);''')
     db.commit()
     return db,c
 
@@ -107,10 +111,10 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
         XPV=read_PV_result(rootf+'/'+resultsf+'/'+name+'_mmHgml.csv')
         columns=['jID']+list(XPV.columns)
         c.executemany('INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
-                .format(ID,',?'*15),XPV.as_matrix())
+                .format(ID,',?'*15),XPV.values)
         # get miscellanous data
         with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
-            jobinp=jobfile.read()[15982640:]
+            jobinp=jobfile.read()[15000000:]
         dictio=read_facts(name,jobinp=jobinp,rootf=rootf)
         sql_update_set=['%s=?'%key for key in dictio.keys()]
         c.execute('UPDATE jData SET {1} WHERE jID={0};'\
@@ -187,13 +191,18 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
             'INSERT INTO jHem({2}) VALUES ({0}{1});'\
             .format(ID,',?'*len(h_pars),','.join(columns)),\
             tuple(h_pars.values()))
-        # insert Rs
-        Rs=readR(jobinp=jobinp)
+        # insert Rs and Cs
+        Rs,Cs=readRC(jobinp=jobinp)
         columns=['jID']+list(Rs.keys())
         c.execute(\
             'INSERT INTO jR({2}) VALUES ({0}{1});'\
             .format(ID,',?'*len(Rs),','.join(columns)),\
             tuple(Rs.values()))
+        columns=['jID']+list(Cs.keys())
+        c.execute(\
+            'INSERT INTO jC({2}) VALUES ({0}{1});'\
+            .format(ID,',?'*len(Cs),','.join(columns)),\
+            tuple(Cs.values()))
         # compute convergence as distance between start and end in PVloop of last beat
         P=tPV.loc[:,'P1':'P7']
         V=tPV.loc[:,'V1':'V7']
@@ -297,7 +306,7 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     try:
         with open(rootf+'/'+name+'/'+name+'.log','r') as logfile:
             for line in logfile:
-                line=line.strip()
+                line=line.strip().replace('EST','EDT')
                 try:
                     date=datetime.strptime(line,"%a %d %b %Y %I:%M:%S %p EDT")
                     dates.append(date)
@@ -308,7 +317,7 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
         facts['end']=str(dates[-1])
     except Exception as err_log:
         print(err_log)
-   
+        print('Error with dates and or logfile with job %s'%name)
     # Read machine from .dat file
     try:
         with open(rootf+'/'+name+'/'+name+'.dat','r') as datfile:
@@ -356,11 +365,12 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     
     return facts
 
-def readR(jobinp):
+def readRC(jobinp):
     A=np.array([441.15,1722.2,434.9,434.9,1039.8,441.15,441.15])
     #from 0 to 7, se we can work using from 1 to 7, usual convention:
     V=np.zeros(8)
     ro=1.027e-9
+    Cdict={}
     inplines=jobinp.splitlines()
     for i,line in enumerate(inplines):
         line=line.strip()
@@ -378,7 +388,16 @@ def readR(jobinp):
             V[2]=float(inplines[i+1].split(',')[0])
         elif '*Fluid Exchange Property, name=Link-Venous-R' in line:
             V[1]=float(inplines[i+1].split(',')[0])
-        if sum(V==0)==1:
+        elif 'Stiffness-Arterial' in line:
+            if 'Elasticity' in inplines[i+1]:
+                Cdict['ART_K']=float(inplines[i+2].split(',')[0])
+        elif 'Stiffness-Venous' in line:
+            if 'Elasticity' in inplines[i+1]:
+                Cdict['VEN_K']=float(inplines[i+2].split(',')[0])
+        elif 'Stiffness-Pulmonary' in line:
+            if 'Elasticity' in inplines[i+1]:
+                Cdict['PUL_K']=float(inplines[i+2].split(',')[0])
+        if len(Cdict)==3 and sum(V==0)==1:
             break
     V=V[1:]
     V_base=np.array([429.5,429.5,423.47,1751.03,2359.04,536.,59965.5])
@@ -390,7 +409,26 @@ def readR(jobinp):
     Rmdict={"R%im"%i:val for i,val in enumerate(Rm,start=1)}
     Rdict.update(Vdict)
     Rdict.update(Rmdict)
-    return Rdict
+    return Rdict,Cdict
+
+def readC(jobinp):
+    #from 0 to 7, se we can work using from 1 to 7, usual convention:
+    Cdict={}
+    inplines=jobinp.splitlines()
+    for i,line in enumerate(inplines):
+        line=line.strip()
+        if 'Stiffness-Arterial' in line:
+            if 'Elasticity' in inplines[i+1]:
+                Cdict['ART_K']=float(inplines[i+2].split(',')[0])
+        elif 'Stiffness-Venous' in line:
+            if 'Elasticity' in inplines[i+1]:
+                Cdict['VEN_K']=float(inplines[i+2].split(',')[0])
+        elif 'Stiffness-Pulmonary' in line:
+            if 'Elasticity' in inplines[i+1]:
+                Cdict['PUL_K']=float(inplines[i+2].split(',')[0])
+        if len(Cdict)==3:
+            break
+    return Cdict
 
 #if __name__ == "__main__":
 if True:
