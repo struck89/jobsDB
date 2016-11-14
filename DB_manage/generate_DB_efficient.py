@@ -104,162 +104,195 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
     materials=['a','b','af','bf','a_s','bs','afs','bfs','D',\
                't0','m','b_tr','l0','B_ECa','Ca0max','Ca0','Tmax',\
                'Frac_Lat','ip','lr']
-    mat_sql_fill_table=','.join(materials)
     #the following constant is meant to fix the problems that occur with float precision.
     err_corr=1.0001
+    # the version of the json file this script will produce. If different from
+    # the one in a job's folder, the json will be generated again
+    json_v=1
     for name,(ID,jHash) in tqdm(jobs.items()):
 #    for name,ID in jobs.items():
-        #insert_PV:
+        has_updated_json=False
+        jsonpath=os.path.join(rootf,name,'data.json')
+        if os.path.isfile(jsonpath):
+            try:
+                with open(jsonpath) as f:
+                    jsondata=json.load(f)
+                json_recorded_v=jsondata.pop('json_v',0)
+            except:
+                json_recorded_v=0
+            if json_v==json_recorded_v:
+                has_updated_json=True
         XPV=read_PV_result(rootf+'/'+resultsf+'/'+name+'_mmHgml.csv')
-        columns=['jID']+list(XPV.columns)
-        c.executemany('INSERT INTO jPV('+','.join(columns)+') VALUES ({0}{1});'\
+        if has_updated_json:
+            jData=jsondata.pop('jData')
+            jHem=jsondata.pop('jHem')
+            jR=jsondata.pop('jR')
+            jC=jsondata.pop('jC')
+            jMat=jsondata.pop('jMat')
+            jConv=jsondata.pop('jConv')
+        else:
+            # jData
+            with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
+                jobinp=jobfile.read()[15000000:]
+            jData=read_facts(name,jobinp=jobinp,rootf=rootf)
+            jData['jHash']=jHash
+            jData['jName']=name
+            # jHem
+            # we have to slice XPV for the last beat and also for the previous one
+            sec_computed=jData['sec_computed']
+            tPV=XPV[XPV.X>=sec_computed-1*err_corr]
+            t=tPV.X-sec_computed+1
+            VEN_P,RA_P,RV_P,PUL_P,LA_P,LV_P,ART_P='P1','P2','P3','P4','P5','P6','P7'
+            VEN_V,RA_V,RV_V,PUL_V,LA_V,LV_V,ART_V='V1','V2','V3','V4','V5','V6','V7'
+            # jHem === hemodynamic parameters ; cf=== conversion factor
+            jHem={}
+            #Systolic and diastolic blood pressure (arterial)
+            jHem['SBP']=tPV[ART_P].max()
+            jHem['DBP']=tPV[ART_P].min()
+            # Mean arterial pressure, lab formula and real integrated formula
+            jHem['MAP']=(jHem['SBP']+2*jHem['DBP'])/3
+            jHem['MAPi']=np.trapz(tPV[ART_P],t)/(t.max()-t.min())
+            #Systolic and diastolic RV pressure
+            jHem['RVSP']=tPV[RV_P].max()
+            jHem['RVDP']=tPV[RV_P].min()
+            #Systolic, diastolic, and mean pulmonary arterial pressure (and integrated)
+            jHem['PASP']=tPV[PUL_P].max()
+            jHem['PADP']=tPV[PUL_P].min()
+            jHem['MPAP']=(jHem['PASP']+2*jHem['PADP'])/3
+            jHem['MPAPi']=np.trapz(tPV[PUL_P],t)/(t.max()-t.min())
+            #Mean right and left atrial and venous pressure
+            jHem['RAP']=np.trapz(tPV[RA_P],t)/(t.max()-t.min())
+            jHem['CVP']=np.trapz(tPV[VEN_P],t)/(t.max()-t.min())
+            jHem['LAP']=np.trapz(tPV[LA_P],t)/(t.max()-t.min())
+            jHem['PAOP']=jHem['LAP']
+            #Cardiac output and Stroke volume
+            HR=60 #This will have to be a function of each beat in the future
+            jHem['SV']=(tPV[LV_V].max()-tPV[LV_V].min())
+            jHem['RVSV']=(tPV[RV_V].max()-tPV[RV_V].min())
+            jHem['CO']=HR*jHem['SV']/1000
+            #Systemic and pulmonary Vascular Resistance
+            jHem['SVR']=80*(jHem['MAP']-jHem['RAP'])/jHem['CO']
+            jHem['PVR']=80*(jHem['MPAP']-jHem['PAOP'])/jHem['CO']
+            #Stroke work
+            jHem['LVSW']=np.trapz(tPV[LV_P],tPV[LV_V])*0.133322
+            jHem['RVSW']=np.trapz(tPV[RV_P],tPV[RV_V])*0.133322
+            #Ejection Fraction
+            jHem['EF']=100*jHem['SV']/(tPV[LV_V].max())
+            jHem['RVEF']=100*jHem['RVSV']/(tPV[RV_V].max())
+            #Other interesting params:
+            jHem['MAX_LV_P']=tPV[LV_P].max()
+            jHem['MAX_RV_P']=tPV[RV_P].max()
+            jHem['MAX_LV_V']=tPV[LV_V].max()
+            jHem['MAX_RV_V']=tPV[RV_V].max()
+            jHem['MIN_LV_P']=tPV[LV_P].min()
+            jHem['MIN_RV_P']=tPV[RV_P].min()
+            jHem['MIN_LV_V']=tPV[LV_V].min()
+            jHem['MIN_RV_V']=tPV[RV_V].min()
+            #LV P Converged?
+            prev_beat=XPV[(XPV.X>=sec_computed-2*err_corr) & (XPV.X<=sec_computed-1/err_corr)]
+            jHem['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
+            jHem['Total_Vol']=tPV.iloc[-1,-7:].sum()
+            
+            # jConv
+            P=tPV.loc[:,'P1':'P7']
+            V=tPV.loc[:,'V1':'V7']
+            P_scal=(P-P.min())/(P.max()-P.min())
+            V_scal=(V-V.min())/(V.max()-V.min())
+            conv_array=(P_scal.iloc[-1]-P_scal.iloc[0]).values**2 + (V_scal.iloc[-1]-V_scal.iloc[0]).values**2
+            conv_array=np.sqrt(conv_array)
+            jConv={"C%i"%(i+1) : val for i,val in enumerate(conv_array)}
+            jConv['CT']=conv_array.mean()
+            # changing the index allows us to substract the values later on
+            P_pre=prev_beat.loc[:,'P1':'P7'].set_index(P.index)
+            V_pre=prev_beat.loc[:,'V1':'V7'].set_index(V.index)
+            P_sqerr=((P-P_pre)**2).sum()
+            V_sqerr=((V-V_pre)**2).sum()
+            sqPdict={"sqP%i"%(i+1) : val for i,val in enumerate(P_sqerr)}
+            sqVdict={"sqV%i"%(i+1) : val for i,val in enumerate(V_sqerr)}
+            dfPmax=P.max()-P_pre.max()
+            dfVmax=V.max()-V_pre.max()
+            dfPmin=P.min()-P_pre.min()
+            dfVmin=V.min()-V_pre.min()
+            dfPmaxdict={"dfPmax%i"%(i+1) : val for i,val in enumerate(dfPmax)}
+            dfVmaxdict={"dfVmax%i"%(i+1) : val for i,val in enumerate(dfVmax)}
+            dfPmindict={"dfPmin%i"%(i+1) : val for i,val in enumerate(dfPmin)}
+            dfVmindict={"dfVmin%i"%(i+1) : val for i,val in enumerate(dfVmin)}
+            jConv.update(sqPdict)
+            jConv.update(sqVdict)
+            jConv.update(dfPmaxdict)
+            jConv.update(dfVmaxdict)
+            jConv.update(dfPmindict)
+            jConv.update(dfVmindict)
+            
+            # jR and jC
+            jR,jC=readRC(jobinp=jobinp)
+            
+            # jMat
+            parts=['RA','RV','LA','LV','PA']
+            matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
+            matfiles['PA']='mech-mat-PASSIVE.inp'
+            lr_dict=read_lr(name,rootf)
+            jMat={}
+            for part, matfile in matfiles.items():
+                t_name='j'+part
+                mat_params=read_mat(name,matfile,rootf)+[lr_dict.pop(part,None)]
+#                sql_command='INSERT INTO {0}(jID,{1}) VALUES ({2}{3});'\
+#                    .format(t_name,mat_sql_fill_table,ID,',?'*len(mat_params))
+#                c.execute(sql_command,mat_params)
+                jMat[t_name]=dict(zip(materials,mat_params))
+            jsondata={'json_v':json_v,
+                      'jData':jData,
+                      'jHem':jHem,
+                      'jR':jR,
+                      'jC':jC,
+                      'jMat':jMat,
+                      'jConv':jConv}
+            with open(jsonpath,'w') as f:
+                json.dump(jsondata,f,indent=4,sort_keys=True)         
+
+        #insert_PV:
+        jPVcolumns=['jID']+list(XPV.columns)
+        c.executemany('INSERT INTO jPV('+','.join(jPVcolumns)+') VALUES ({0}{1});'\
                 .format(ID,',?'*15),XPV.values)
-        # get miscellanous data
-        with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
-            jobinp=jobfile.read()[15000000:]
-        jData=read_facts(name,jobinp=jobinp,rootf=rootf)
+        
         sql_update_set=['%s=?'%key for key in jData.keys()]
         c.execute('UPDATE jData SET {1} WHERE jID={0};'\
             .format(ID,','.join(sql_update_set)),tuple(jData.values()))
-        jData['jHash']=jHash
-        jData['jName']=name
+        
         #insert materials:
-        parts=['RA','RV','LA','LV','PA']
-        matfiles={part:'mech-mat-%s_ACTIVE.inp'%part for part in parts}
-        matfiles['PA']='mech-mat-PASSIVE.inp'
-        lr_dict=read_lr(name,rootf)
-        jMat={}
-        for part, matfile in matfiles.items():
-            t_name='j'+part
-            mat_params=read_mat(name,matfile,rootf)+[lr_dict.pop(part,None)]
-            sql_command='INSERT INTO {0}(jID,{1}) VALUES ({2}{3});'\
-                .format(t_name,mat_sql_fill_table,ID,',?'*len(mat_params))
-            c.execute(sql_command,mat_params)
-            jMat[t_name]=dict(zip(materials,mat_params))
+        for jpartname, jpartdict in jMat.items():
+            jpartcolumns=['jID']+list(jpartdict.keys())
+            c.execute(\
+                'INSERT INTO {3}({2}) VALUES ({0}{1});'\
+                .format(ID,',?'*len(jpartdict),','.join(jpartcolumns),jpartname),\
+                tuple(jpartdict.values()))
+        
         # insert hem params
-        # we have to slice XPV for the last beat and also for the previous one
-        sec_computed=jData['sec_computed']
-        tPV=XPV[XPV.X>=sec_computed-1*err_corr]
-        t=tPV.X-sec_computed+1
-        VEN_P,RA_P,RV_P,PUL_P,LA_P,LV_P,ART_P='P1','P2','P3','P4','P5','P6','P7'
-        VEN_V,RA_V,RV_V,PUL_V,LA_V,LV_V,ART_V='V1','V2','V3','V4','V5','V6','V7'
-        # jHem === hemodynamic parameters ; cf=== conversion factor
-        jHem={}
-        #Systolic and diastolic blood pressure (arterial)
-        jHem['SBP']=tPV[ART_P].max()
-        jHem['DBP']=tPV[ART_P].min()
-        # Mean arterial pressure, lab formula and real integrated formula
-        jHem['MAP']=(jHem['SBP']+2*jHem['DBP'])/3
-        jHem['MAPi']=np.trapz(tPV[ART_P],t)/(t.max()-t.min())
-        #Systolic and diastolic RV pressure
-        jHem['RVSP']=tPV[RV_P].max()
-        jHem['RVDP']=tPV[RV_P].min()
-        #Systolic, diastolic, and mean pulmonary arterial pressure (and integrated)
-        jHem['PASP']=tPV[PUL_P].max()
-        jHem['PADP']=tPV[PUL_P].min()
-        jHem['MPAP']=(jHem['PASP']+2*jHem['PADP'])/3
-        jHem['MPAPi']=np.trapz(tPV[PUL_P],t)/(t.max()-t.min())
-        #Mean right and left atrial and venous pressure
-        jHem['RAP']=np.trapz(tPV[RA_P],t)/(t.max()-t.min())
-        jHem['CVP']=np.trapz(tPV[VEN_P],t)/(t.max()-t.min())
-        jHem['LAP']=np.trapz(tPV[LA_P],t)/(t.max()-t.min())
-        jHem['PAOP']=jHem['LAP']
-        #Cardiac output and Stroke volume
-        HR=60 #This will have to be a function of each beat in the future
-        jHem['SV']=(tPV[LV_V].max()-tPV[LV_V].min())
-        jHem['RVSV']=(tPV[RV_V].max()-tPV[RV_V].min())
-        jHem['CO']=HR*jHem['SV']/1000
-        #Systemic and pulmonary Vascular Resistance
-        jHem['SVR']=80*(jHem['MAP']-jHem['RAP'])/jHem['CO']
-        jHem['PVR']=80*(jHem['MPAP']-jHem['PAOP'])/jHem['CO']
-        #Stroke work
-        jHem['LVSW']=np.trapz(tPV[LV_P],tPV[LV_V])*0.133322
-        jHem['RVSW']=np.trapz(tPV[RV_P],tPV[RV_V])*0.133322
-        #Ejection Fraction
-        jHem['EF']=100*jHem['SV']/(tPV[LV_V].max())
-        jHem['RVEF']=100*jHem['RVSV']/(tPV[RV_V].max())
-        #Other interesting params:
-        jHem['MAX_LV_P']=tPV[LV_P].max()
-        jHem['MAX_RV_P']=tPV[RV_P].max()
-        jHem['MAX_LV_V']=tPV[LV_V].max()
-        jHem['MAX_RV_V']=tPV[RV_V].max()
-        jHem['MIN_LV_P']=tPV[LV_P].min()
-        jHem['MIN_RV_P']=tPV[RV_P].min()
-        jHem['MIN_LV_V']=tPV[LV_V].min()
-        jHem['MIN_RV_V']=tPV[RV_V].min()
-        #LV P Converged?
-        prev_beat=XPV[(XPV.X>=sec_computed-2*err_corr) & (XPV.X<=sec_computed-1/err_corr)]
-#        prev_beat=prev_beat[prev_beat['X']<=sec_computed-1]
-        jHem['LV_P_CONV']=100*(tPV[LV_P].max()-prev_beat[LV_P].max())/prev_beat[LV_P].max()
-        jHem['Total_Vol']=tPV.iloc[-1,-7:].sum()
-        columns=['jID']+list(jHem.keys())
+        jHemcolumns=['jID']+list(jHem.keys())
         c.execute(\
             'INSERT INTO jHem({2}) VALUES ({0}{1});'\
-            .format(ID,',?'*len(jHem),','.join(columns)),\
+            .format(ID,',?'*len(jHem),','.join(jHemcolumns)),\
             tuple(jHem.values()))
+        
         # insert Rs and Cs
-        jR,jC=readRC(jobinp=jobinp)
-        columns=['jID']+list(jR.keys())
+        jRcolumns=['jID']+list(jR.keys())
         c.execute(\
             'INSERT INTO jR({2}) VALUES ({0}{1});'\
-            .format(ID,',?'*len(jR),','.join(columns)),\
+            .format(ID,',?'*len(jR),','.join(jRcolumns)),\
             tuple(jR.values()))
-        columns=['jID']+list(jC.keys())
+        
+        jCcolumns=['jID']+list(jC.keys())
         c.execute(\
             'INSERT INTO jC({2}) VALUES ({0}{1});'\
-            .format(ID,',?'*len(jC),','.join(columns)),\
+            .format(ID,',?'*len(jC),','.join(jCcolumns)),\
             tuple(jC.values()))
-        # compute convergence as distance between start and end in PVloop of last beat
-        P=tPV.loc[:,'P1':'P7']
-        V=tPV.loc[:,'V1':'V7']
-        P_scal=(P-P.min())/(P.max()-P.min())
-        V_scal=(V-V.min())/(V.max()-V.min())
-        conv_array=(P_scal.iloc[-1]-P_scal.iloc[0]).values**2 + (V_scal.iloc[-1]-V_scal.iloc[0]).values**2
-        conv_array=np.sqrt(conv_array)
-        jConv={"C%i"%(i+1) : val for i,val in enumerate(conv_array)}
-        jConv['CT']=conv_array.mean()
-        # changing the index allows us to substract the values later on
-        P_pre=prev_beat.loc[:,'P1':'P7'].set_index(P.index)
-        V_pre=prev_beat.loc[:,'V1':'V7'].set_index(V.index)
-        P_sqerr=((P-P_pre)**2).sum()
-        V_sqerr=((V-V_pre)**2).sum()
-        sqPdict={"sqP%i"%(i+1) : val for i,val in enumerate(P_sqerr)}
-        sqVdict={"sqV%i"%(i+1) : val for i,val in enumerate(V_sqerr)}
-        dfPmax=P.max()-P_pre.max()
-        dfVmax=V.max()-V_pre.max()
-        dfPmin=P.min()-P_pre.min()
-        dfVmin=V.min()-V_pre.min()
-        dfPmaxdict={"dfPmax%i"%(i+1) : val for i,val in enumerate(dfPmax)}
-        dfVmaxdict={"dfVmax%i"%(i+1) : val for i,val in enumerate(dfVmax)}
-        dfPmindict={"dfPmin%i"%(i+1) : val for i,val in enumerate(dfPmin)}
-        dfVmindict={"dfVmin%i"%(i+1) : val for i,val in enumerate(dfVmin)}
-        jConv.update(sqPdict)
-        jConv.update(sqVdict)
-        jConv.update(dfPmaxdict)
-        jConv.update(dfVmaxdict)
-        jConv.update(dfPmindict)
-        jConv.update(dfVmindict)
         
-#        sql_update_set=['%s=?'%key for key in cdict.keys()]
-#        c.execute('UPDATE jConv SET {1} WHERE jID={0};'\
-#            .format(ID,','.join(sql_update_set)),tuple(cdict.values()))
-        columns=['jID']+list(jConv.keys())
+        # compute convergence as distance between start and end in PVloop of last beat
+        jConvcolumns=['jID']+list(jConv.keys())
         c.execute(\
             'INSERT INTO jConv({2}) VALUES ({0}{1});'\
-            .format(ID,',?'*len(jConv),','.join(columns)),\
+            .format(ID,',?'*len(jConv),','.join(jConvcolumns)),\
             tuple(jConv.values()))
-#        raise KeyboardInterrupt
-#        P_sqerr_alt=((P.values-P_pre.values)**2).sum(axis=0)
-        alldicts={'jData':jData,
-                  'jHem':jHem,
-                  'jR':jR,
-                  'jC':jC,
-                  'jMat':jMat,
-                  'jConv':jConv}
-        jsonpath=os.path.join(rootf,name,'data.json')
-        with open(jsonpath,'w') as f:
-            json.dump(alldicts,f,indent=4,sort_keys=True)
-        
 
 def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
     fullpath=rootf+'/'+name+'/'+matfile
@@ -356,7 +389,7 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     except Exception as err_sta:
         print(err_sta)
 
-    # Read from job file, inp
+    # Process job file, inp
     try:
         jobinp=jobinp.split('** STEP: ')
         pre_steps=jobinp[0]
@@ -430,7 +463,7 @@ if True:
     rootf='D:/users/eta2/hCxBvf'
     gen_mmHgml(rootf=rootf)
     step0=time.clock()
-    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-sqerr-descr.db',rootf=rootf,howmany=5)
+    db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-sqerr-descr.db',rootf=rootf,howmany=-1)
     step1=time.clock()
     print('%.4g'%(step1-step0)+'s to create the DB with IDs, names and hashes')
     
