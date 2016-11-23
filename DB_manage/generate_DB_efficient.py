@@ -14,13 +14,12 @@ import json
 from datetime import datetime
 from hashlib import md5
 from tqdm import tqdm
-from generate_PV_mmHgml import gen_mmHgml
 
 def hashstr(name):
     return md5(name.lower().encode()).hexdigest()[-6:].upper()
 
 def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs',howmany=-1):
-    db=sql.connect(rootf+'/'+db_file)
+    db=sql.connect(os.path.join(rootf,db_file))
     c=db.cursor()
     c.execute('drop table if exists jData;')
     c.execute('''create table jData(jID int primary key, jName text, jHash text, 
@@ -28,11 +27,11 @@ def create_DB(db_file,rootf='D:/users/eta2/hCxBvf',ODBsf='ODBs',howmany=-1):
                  machine text, cores int, steps int, prel_duration real,
                  sec_computed real, description text);''')
     #now get all jobs in ./ODBs/ that have a folder in ./ with the same name
-    ODBs_cand=os.listdir(rootf+'/'+ODBsf)
+    ODBs_cand=os.listdir(os.path.join(rootf,ODBsf))
     ODBs_cand=[name[:-4] for name in ODBs_cand if name[-3:].lower()=='odb']
     ODBs=[folder for folder in os.listdir(rootf) if \
           (folder in ODBs_cand and \
-           os.path.isdir(rootf+'/'+folder))]
+           os.path.isdir(os.path.join(rootf,folder)))]
     ODBs.sort()
     if howmany>-1:
         ODBs=ODBs[:howmany]
@@ -122,7 +121,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
                 json_recorded_v=0
             if json_v==json_recorded_v:
                 has_updated_json=True
-        XPV=read_PV_result(rootf+'/'+resultsf+'/'+name+'_mmHgml.csv')
+        XPV=read_PV_result(os.path.join(rootf,resultsf,name+'_mmHgml.csv'))
         if has_updated_json:
             jData=jsondata.pop('jData')
             jHem=jsondata.pop('jHem')
@@ -132,7 +131,8 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
             jConv=jsondata.pop('jConv')
         else:
             # jData
-            with open(rootf+'/'+name+'/'+name+'.inp','r') as jobfile:
+            jobinppath=os.path.join(rootf,name,name+'.inp')
+            with open(jobinppath,'r') as jobfile:
                 jobinp=jobfile.read()[15000000:]
             jData=read_facts(name,jobinp=jobinp,rootf=rootf)
             jData['jHash']=jHash
@@ -295,7 +295,7 @@ def fill_DB(c,rootf='D:/users/eta2/hCxBvf',resultsf='results_mmHgml'):
             tuple(jConv.values()))
 
 def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
-    fullpath=rootf+'/'+name+'/'+matfile
+    fullpath=os.path.join(rootf,name,matfile)
     mat_params=[]
     try:
         with open(fullpath) as matfile:
@@ -308,7 +308,7 @@ def read_mat(name,matfile,rootf='D:/users/eta2/hCxBvf'):
         
 
 def read_lr(name,rootf='D:/users/eta2/hCxBvf'):
-    fullpath=rootf+'/'+name+'/mech-mat-RV_ACTIVE.inp'
+    fullpath=os.path.join(rootf,name,'mech-mat-RV_ACTIVE.inp')
     lr_dict={}
     try:
         with open(fullpath) as RVfile:
@@ -351,7 +351,8 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
     dates=[]
     facts={}
     try:
-        with open(rootf+'/'+name+'/'+name+'.log','r') as logfile:
+        logfilepath=os.path.join(rootf,name,name+'.log')
+        with open(logfilepath,'r') as logfile:
             for line in logfile:
                 line=line.strip().replace('EST','EDT')
                 try:
@@ -367,7 +368,8 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
         print('Error with dates and or logfile with job %s'%name)
     # Read machine from .dat file
     try:
-        with open(rootf+'/'+name+'/'+name+'.dat','r') as datfile:
+        datfilepath=os.path.join(rootf,name,name+'.dat')
+        with open(datfilepath,'r') as datfile:
             raw=datfile.read(1024)
         raw=raw.split(' machine ')
         raw=raw[1].splitlines()
@@ -377,7 +379,8 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
 
     # Read a lotta things from .sta file
     try:
-        with open(rootf+'/'+name+'/'+name+'.sta','r') as stafile:
+        stafilepath=os.path.join(rootf,name,name+'.sta')
+        with open(stafilepath,'r') as stafile:
             raw=stafile.read()
         raw=raw.split('Domain level parallelization will be used with ',1)
         raw=raw[1].split(' processors.',1)
@@ -404,7 +407,8 @@ def read_facts(name,jobinp,rootf='D:/users/eta2/hCxBvf'):
 
     # Read job description
     try:
-        with open(rootf+'/'+name+'/'+'description.txt','r') as descrfile:
+        descfilepath=os.path.join(rootf,name,'description.txt')
+        with open(descfilepath,'r') as descrfile:
             raw=descrfile.read()
         facts['description']=raw.strip()
     except Exception as err_inp:
@@ -458,9 +462,28 @@ def readRC(jobinp):
     Rdict.update(Rmdict)
     return Rdict,Cdict
 
+def gen_mmHgml(rootf='D:/users/eta2/hCxBvf'):
+    res_files_MPa=os.listdir(os.path.join(rootf,'results'))
+    res_files_MPa=[name[:-7] for name in res_files_MPa if name[-7:]=='_PV.csv']
+    
+    res_files_mmHg=os.listdir(os.path.join(rootf,'results_mmHgml'))
+    res_files_mmHg=[name[:-11] for name in res_files_mmHg if name[-11:]=='_mmHgml.csv']
+    
+    files_to_process=[name for name in res_files_MPa if name not in res_files_mmHg]
+    
+    for jname in files_to_process:
+        full_addr_in=os.path.join(rootf,'results',jname+'_PV.csv')
+        full_addr_out=os.path.join(rootf,'results_mmHgml',jname+'_mmHgml.csv')
+        
+        df=pd.read_csv(full_addr_in)
+        df.loc[:,'P1':'P7']=df.loc[:,'P1':'P7'].values*7500
+        df.loc[:,'V1':'V7']=df.loc[:,'V1':'V7'].values*0.001
+    
+        df.to_csv(path_or_buf=full_addr_out,float_format="%.6g",index=False)
+
 #if __name__ == "__main__":
 if True:
-    rootf='D:/users/eta2/hCxBvf'
+    rootf=os.getcwd()
     gen_mmHgml(rootf=rootf)
     step0=time.clock()
     db,c=create_DB('dbPVhashhemoRs-fast-mmHg-cm3-sqerr-descr.db',rootf=rootf,howmany=-1)
